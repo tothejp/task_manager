@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>랜덤 게임</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-bottom: 32px;
+    }
+
+    /* 원 */
+    .circle-area {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    .circle-bg {
+      position: absolute;
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      border: 2px dashed #2a2a4a;
+    }
+
+    .circle {
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #a78bfa, #4f46e5);
+      box-shadow: 0 0 30px #7c3aed66;
+      transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  background 0.4s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .circle.broken {
+      background: radial-gradient(circle at 35% 35%, #f87171, #7f1d1d);
+      box-shadow: 0 0 40px #ef444466;
+    }
+
+    .circle-score {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      user-select: none;
+    }
+
+    /* 결과 표시 */
+    .result-strip {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .result-badge {
+      padding: 8px 24px;
+      border-radius: 999px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .result-badge.score {
+      background: #1e1040;
+      border: 2px solid #7c3aed;
+      color: #a78bfa;
+    }
+
+    .result-badge.broken-badge {
+      background: #2a0a0a;
+      border: 2px solid #ef4444;
+      color: #f87171;
+    }
+
+    .result-badge.idle {
+      color: #4b5563;
+      font-size: 0.9rem;
+      font-weight: 400;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.6); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* 점수 히스토리 */
+    .history {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 320px;
+      min-height: 32px;
+      margin-bottom: 28px;
+    }
+
+    .history-chip {
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .chip-0  { background: #1a1a2e; border: 1px solid #2a2a4a; color: #9ca3af; }
+    .chip-1  { background: #1e1040; border: 1px solid #7c3aed; color: #a78bfa; }
+    .chip-2  { background: #0f2a40; border: 1px solid #2563eb; color: #60a5fa; }
+    .chip-3  { background: #0f2a20; border: 1px solid #059669; color: #34d399; }
+    .chip-4  { background: #2a1f00; border: 1px solid #d97706; color: #fbbf24; }
+    .chip-5  { background: #2a0a20; border: 1px solid #db2777; color: #f472b6; }
+    .chip-x  { background: #2a0a0a; border: 1px solid #ef4444; color: #f87171; }
+
+    /* 버튼 */
+    .btn-start {
+      padding: 16px 60px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.05em;
+    }
+
+    .btn-start:hover  { opacity: 0.85; }
+    .btn-start:active { transform: scale(0.97); }
+
+    .btn-start:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* 게임오버 오버레이 */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+
+    .overlay.hidden { display: none; }
+
+    .gameover-card {
+      background: #1a1a2e;
+      border: 2px solid #ef4444;
+      border-radius: 20px;
+      padding: 40px 50px;
+      text-align: center;
+      box-shadow: 0 0 60px #ef444433;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .gameover-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #f87171;
+      margin-bottom: 8px;
+    }
+
+    .gameover-score {
+      font-size: 1rem;
+      color: #9ca3af;
+      margin-bottom: 6px;
+    }
+
+    .gameover-final {
+      font-size: 3rem;
+      font-weight: 800;
+      color: #e0e0f0;
+      margin-bottom: 28px;
+    }
+
+    .btn-retry {
+      padding: 12px 40px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7c3aed, #2563eb);
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-retry:hover { opacity: 0.85; }
+
+    /* 점수 표시 (상단) */
+    .score-display {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .score-display span {
+      color: #a78bfa;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    /* 스피너 링 */
+    .spin-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 4px solid transparent;
+      border-top-color: #a78bfa;
+      border-right-color: #60a5fa;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 2;
+      transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  opacity 0.2s;
+    }
+
+    .spin-ring.outer {
+      border-top-color: #a78bfa;
+      border-right-color: #60a5fa;
+      animation: spin 0.75s linear infinite;
+    }
+
+    .spin-ring.inner {
+      border: 3px solid transparent;
+      border-bottom-color: #f472b6;
+      border-left-color: #34d399;
+      animation: spin 0.45s linear infinite reverse;
+    }
+
+    .spin-ring.active { opacity: 1; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 흔들림 애니메이션 */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      15%      { transform: translateX(-10px) rotate(-2deg); }
+      30%      { transform: translateX(10px) rotate(2deg); }
+      45%      { transform: translateX(-8px); }
+      60%      { transform: translateX(8px); }
+      75%      { transform: translateX(-4px); }
+      90%      { transform: translateX(4px); }
+    }
+
+    .shake { animation: shake 0.5s ease; }
+  </style>
+</head>
+<body>
+
+  <h1>랜덤 게임</h1>
+  <p class="subtitle">시작을 눌러 운을 시험해보세요</p>
+
+  <div class="score-display">현재 점수: <span id="scoreNum">0</span></div>
+
+  <div class="circle-area">
+    <div class="circle-bg"></div>
+    <div class="spin-ring outer" id="ringOuter"></div>
+    <div class="spin-ring inner" id="ringInner"></div>
+    <div class="circle" id="circle" style="width:60px;height:60px;">
+      <span class="circle-score" id="circleScore">0</span>
+    </div>
+  </div>
+
+  <div class="result-strip">
+    <div class="result-badge idle" id="resultBadge">버튼을 눌러 시작하세요</div>
+  </div>
+
+  <div class="history" id="history"></div>
+
+  <button class="btn-start" id="startBtn" onclick="doStart()">시작</button>
+
+  <!-- 게임오버 오버레이 -->
+  <div class="overlay hidden" id="overlay">
+    <div class="gameover-card">
+      <div class="gameover-title">💥 부서짐!</div>
+      <div class="gameover-score">최종 점수</div>
+      <div class="gameover-final" id="finalScore">0</div>
+      <button class="btn-retry" onclick="reset()">다시 시작</button>
+    </div>
+  </div>
+
+  <script>
+    const OPTIONS = [0, 1, 2, 3, 4, 5];
+    const MIN_R = 60;   // 최소 원 크기(px)
+    const MAX_R = 260;  // 최대 원 크기(px)
+    const SCORE_CAP = 50; // 이 점수에서 원이 최대 크기
+
+    let score = 0;
+    let spinning = false;
+
+    const circleEl      = document.getElementById('circle');
+    const circleScoreEl = document.getElementById('circleScore');
+    const scoreNumEl    = document.getElementById('scoreNum');
+    const resultEl      = document.getElementById('resultBadge');
+    const historyEl     = document.getElementById('history');
+    const overlay       = document.getElementById('overlay');
+    const finalEl       = document.getElementById('finalScore');
+    const startBtn      = document.getElementById('startBtn');
+    const ringOuter     = document.getElementById('ringOuter');
+    const ringInner     = document.getElementById('ringInner');
+
+    function getCircleSize(s) {
+      const ratio = Math.min(s / SCORE_CAP, 1);
+      return MIN_R + (MAX_R - MIN_R) * ratio;
+    }
+
+    function setCircleSize(s) {
+      const size = getCircleSize(s);
+      circleEl.style.width  = size + 'px';
+      circleEl.style.height = size + 'px';
+      updateRingSize(size);
+    }
+
+    function updateRingSize(circleSize) {
+      const outerSize = circleSize + 28;
+      const innerSize = circleSize + 14;
+      ringOuter.style.width  = outerSize + 'px';
+      ringOuter.style.height = outerSize + 'px';
+      ringInner.style.width  = innerSize + 'px';
+      ringInner.style.height = innerSize + 'px';
+    }
+
+    function showRings() {
+      const size = getCircleSize(score);
+      updateRingSize(size);
+      ringOuter.classList.add('active');
+      ringInner.classList.add('active');
+    }
+
+    function hideRings() {
+      ringOuter.classList.remove('active');
+      ringInner.classList.remove('active');
+    }
+
+    function addHistoryChip(val) {
+      const chip = document.createElement('span');
+      if (val === '부서짐') {
+        chip.className = 'history-chip chip-x';
+        chip.textContent = '💥';
+      } else {
+        const chipClasses = ['chip-0','chip-1','chip-2','chip-3','chip-4','chip-5'];
+        chip.className = 'history-chip ' + chipClasses[val];
+        chip.textContent = '+' + val;
+      }
+      historyEl.appendChild(chip);
+      historyEl.scrollLeft = historyEl.scrollWidth;
+    }
+
+    async function doStart() {
+      if (spinning) return;
+      spinning = true;
+      startBtn.disabled = true;
+
+      showRings();
+
+      // 두근두근 — 빠른 플래시
+      const flashOptions = [0, 1, 2, 3, 4, 5, '부서짐'];
+      for (let i = 0; i < 8; i++) {
+        const tmp = flashOptions[Math.floor(Math.random() * flashOptions.length)];
+        showResult(tmp, true);
+        await delay(60 + i * 18);
+      }
+
+      const picked = Math.random() < 0.1 ? '부서짐' : OPTIONS[Math.floor(Math.random() * OPTIONS.length)];
+      showResult(picked, false);
+      addHistoryChip(picked);
+
+      hideRings();
+
+      if (picked === '부서짐') {
+        circleEl.classList.add('broken');
+        circleEl.classList.add('shake');
+        setTimeout(() => {
+          finalEl.textContent = score;
+          overlay.classList.remove('hidden');
+        }, 600);
+      } else {
+        score += picked;
+        scoreNumEl.textContent = score;
+        circleScoreEl.textContent = score;
+        setCircleSize(score);
+        spinning = false;
+        startBtn.disabled = false;
+      }
+    }
+
+    function showResult(val, temp) {
+      resultEl.className = 'result-badge';
+      if (val === '부서짐') {
+        resultEl.className += temp ? ' broken-badge' : ' broken-badge';
+        resultEl.textContent = '💥 부서짐!';
+      } else {
+        resultEl.className += ' score';
+        resultEl.textContent = temp ? `${val}` : `+${val} 점!`;
+      }
+    }
+
+    function reset() {
+      score = 0;
+      spinning = false;
+      hideRings();
+      overlay.classList.add('hidden');
+      circleEl.classList.remove('broken', 'shake');
+      circleEl.style.width  = MIN_R + 'px';
+      circleEl.style.height = MIN_R + 'px';
+      circleScoreEl.textContent = '0';
+      scoreNumEl.textContent = '0';
+      resultEl.className = 'result-badge idle';
+      resultEl.textContent = '버튼을 눌러 시작하세요';
+      historyEl.innerHTML = '';
+      startBtn.disabled = false;
+    }
+
+    function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+  </script>
+</body>
+</html>
