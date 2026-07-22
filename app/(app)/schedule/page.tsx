@@ -22,6 +22,7 @@ export default async function SchedulePage({
   if (!member) redirect("/onboarding");
 
   if (member.role !== "member") redirect("/");
+  if (member.status === "pending") redirect("/pending");
 
   const month = searchParams.month ?? getCurrentMonth();
 

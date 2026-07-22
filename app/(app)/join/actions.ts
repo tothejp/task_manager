@@ -33,12 +33,12 @@ export async function joinTeam(prevState: { error: string } | null, formData: Fo
 
   if (existing) return { error: '이미 해당 팀의 구성원입니다.' }
 
-  // 팀원으로 등록
+  // 팀원으로 등록 (이메일 인증 대신 관리자 승인을 거치므로 pending으로 시작)
   const { error: memberError } = await supabase
     .from('members')
-    .insert({ team_id: teamId, user_id: user.id, role: 'member', name: memberName })
+    .insert({ team_id: teamId, user_id: user.id, role: 'member', status: 'pending', name: memberName })
 
   if (memberError) return { error: '팀 합류에 실패했습니다.' }
 
-  redirect('/dashboard')
+  redirect('/pending')
 }

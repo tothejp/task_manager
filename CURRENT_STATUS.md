@@ -23,6 +23,7 @@
 - [x] 휴가→재배정 (PRD 3.7) — `schedule/actions.ts`에서 휴가 등록 시 `apply_vacation_gaps` RPC 호출, `/admin/assign`에 공백 알림 표시 후 기존 자동배정으로 재배정
 - [x] 완료 체크 (PRD 3.8) — `/my-tasks`(팀원/모바일)에서 `mark_assignment_completed` RPC 호출, `/admin`에 미완료 과업 강조 및 월별 완료율 표시
 - [x] 공정성 지표 시각화 (PRD 3.9) — `/admin/fairness`, 구성원별 누적 배정 막대그래프, 평균 대비 ±20% 편차 경고 (`FAIRNESS_DEVIATION_THRESHOLD` 상수)
+- [x] 가입 승인제 (이메일 인증 대체) — 초대코드로 합류하는 팀원은 `members.status='pending'`으로 등록, `/pending` 대기 화면 표시, 관리자가 `/admin/members`에서 승인/거부. DB 변경은 `supabase/member_approval.sql`을 Supabase에서 직접 실행 필요 (아래 "진행 중인 작업" 참고)
 - [x] 공통 유틸 — `isTimeOverlapping()`, `lib/date.ts`, `lib/device.ts`, `lib/auto-assign.ts`
 
 ### 운영 배포
@@ -45,6 +46,10 @@
 
 ## 진행 중인 작업
 - Vercel 환경변수 최종 설정 및 Redeploy 확인
+- **가입 승인제 DB 반영 (미완료, 사용자 직접 작업 필요)**:
+  1. `supabase/member_approval.sql`을 Supabase SQL Editor에서 실행 (members.status 컬럼 추가, RLS 정책 갱신)
+  2. Supabase 대시보드 → Authentication → Providers → Email → "Confirm email" 끄기
+  둘 다 적용 전까지는 새 팀원 합류 시 여전히 이메일 인증이 요구되고, 승인 화면(`/pending`, `/admin/members`)이 DB 컬럼 없이는 에러가 난다.
 
 ---
 
@@ -62,6 +67,8 @@
 - **역할-플랫폼 분리**: 팀원=모바일 전용, 관리자=PC 전용(배정) + 모바일(조회)
 - **스킬 미보유 배정**: 하드 차단 아닌 경고 모달 + `skill_override=true` 기록
 - **시간 중복 배정**: 하드 차단
+- **가입 승인**: 이메일 인증 대신 관리자 승인. `members.status`(active/pending), 팀 생성자는 즉시 active, 초대코드 합류자는 pending 시작 → 관리자가 `/admin/members`에서 승인
+- **알려진 문서-실제 DB 불일치**: `prisma/schema.prisma`/`supabase/rls_policies.sql`이 실제 Supabase 스키마와 완전히 일치하지 않는다 (예: 앱 코드가 사용하는 `invitations` 테이블·`validate_invitation` RPC는 이 파일들에 정의돼 있지 않음 — Supabase 대시보드에서 직접 추가된 것으로 추정). 새 기능 작업 시 이 파일들을 100% 신뢰하지 말고 실제 앱 코드의 쿼리를 기준으로 확인할 것
 
 ---
 
@@ -91,3 +98,4 @@
 - `CLAUDE.md` — 개발 작업 가이드
 - `prisma/schema.prisma` — 데이터 모델
 - `supabase/rls_policies.sql` — RLS 정책 및 SECURITY DEFINER 함수
+- `supabase/member_approval.sql` — 가입 승인제 관련 추가 DB 변경 (Supabase에서 직접 실행 필요)

@@ -18,6 +18,12 @@ enum MemberRole {
   member
 }
 
+// pending: 초대코드로 합류해 관리자 승인 대기 중. 팀 생성자(관리자)는 기본값 active로 즉시 활성화.
+enum MemberStatus {
+  active
+  pending
+}
+
 enum AvailabilityStatus {
   available
   vacation
@@ -63,6 +69,7 @@ model Member {
   teamId    String     @map("team_id") @db.Uuid
   userId    String     @unique @map("user_id") @db.Uuid
   role      MemberRole
+  status    MemberStatus @default(active)
   name      String
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")

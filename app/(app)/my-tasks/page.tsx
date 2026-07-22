@@ -34,6 +34,7 @@ export default async function MyTasksPage({
   const member = await getCurrentMember();
   if (!member) redirect("/onboarding");
   if (member.role !== "member") redirect("/");
+  if (member.status === "pending") redirect("/pending");
 
   const { data } = await supabase
     .from("assignments")

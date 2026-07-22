@@ -158,6 +158,9 @@ export default async function AdminDashboardPage({
           <Link href="/admin/fairness" className="underline">
             공정성 지표
           </Link>
+          <Link href="/admin/members" className="underline">
+            팀원 승인
+          </Link>
           <Link href="/" className="underline">
             홈으로
           </Link>

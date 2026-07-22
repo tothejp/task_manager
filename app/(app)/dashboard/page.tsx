@@ -13,6 +13,7 @@ export default async function DashboardPage() {
     .maybeSingle()
 
   if (!member) redirect('/onboarding')
+  if (member.role !== 'admin' && (member as any).status === 'pending') redirect('/pending')
 
   const team = (member as any).teams
 
