@@ -25,14 +25,15 @@ export async function createTeam(prevState: { error: string } | null, formData: 
     .select()
     .single()
 
-  if (teamError || !team) return { error: '팀 생성에 실패했습니다.' }
+  // TODO: 원인 진단 후 사용자 친화적 메시지로 되돌릴 것
+  if (teamError || !team) return { error: `[디버그:team] ${teamError?.code ?? ''} ${teamError?.message ?? '데이터 없음'}` }
 
   // 관리자 구성원 등록
   const { error: memberError } = await supabase
     .from('members')
-    .insert({ team_id: team.id, user_id: user.id, role: 'admin', name: memberName })
+    .insert({ team_id: team.id, user_id: user.id, role: 'admin', status: 'active', name: memberName })
 
-  if (memberError) return { error: '구성원 등록에 실패했습니다.' }
+  if (memberError) return { error: `[디버그:member] ${memberError.code} ${memberError.message}` }
 
   // 초대 코드 발급 (7일 유효)
   const expiresAt = new Date()
