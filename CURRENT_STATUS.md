@@ -1,8 +1,8 @@
-# CURRENT_STATUS.md — 임무분담표(TaskShare) 진행 상황
+# CURRENT_STATUS.md — 임무분담표(TaskShare, UI상 "Task Manager") 진행 상황
 
 마지막 업데이트: 2026-07-22
 
-## 현재 단계: 1~9단계 기능 구현 완료, 전체 흐름 테스트 및 운영 확인 남음
+## 현재 단계: 기능 구현 + UI 리디자인 코드는 전부 완료, DB 스크립트 2개 미실행 + 실사용 검증 남음
 
 ---
 
@@ -62,12 +62,13 @@
 
 ---
 
-## 다음 단계 (예정)
-1. `supabase/fix_missing_defaults.sql` → `supabase/superadmin.sql` 순서로 Supabase SQL Editor에서 실행(아직 안 했다면)
+## 다음 단계 (다음 세션 시작 시 이 순서로)
+1. **(최우선) `supabase/fix_missing_defaults.sql` → `supabase/superadmin.sql` 순서로 Supabase SQL Editor에서 실행.** 이 둘을 안 돌리면 팀 생성/합류/과업/배정 등 대부분의 insert가 계속 실패한다.
 2. **전체 흐름 테스트** — 일반 계정 가입(이메일 인증 없이 바로 로그인) → `/onboarding`에서 팀 드롭다운 선택+합류 신청 → `/pending` 진입 → tothejp 계정으로 `/admin/members`에서 승인 → 일정 입력 → 배정 → 자동배정 → 휴가 재배정 → 완료 체크 → 공정성 지표
 3. tothejp 계정으로 `/admin`, `/admin/tasks`, `/admin/assign`, `/admin/fairness`, `/admin/members`에서 팀 전환 드롭다운으로 지원중대/운용중대/본부중대를 오가며 각 팀 데이터가 올바르게 분리되어 보이는지 확인
-4. UI 리디자인 실사용 확인 — 사이드바 내비게이션, 관리자 대시보드 캘린더 날짜 선택, 로그아웃 버튼 동작
-5. 로그아웃 405 에러 재현 여부 확인(Network 탭 Method 확인)
+4. UI 리디자인 실사용 확인 — 사이드바 내비게이션(관리자 5개/팀원 2개 메뉴), 관리자 대시보드 캘린더 날짜 선택, 로그인 화면 로고
+5. 로그아웃 405 에러 재현 여부 확인 (Network 탭에서 실제 요청 Method 확인 — 사용자가 확인해주기로 했었음, 아직 회신 없음)
+6. 문제없으면 `app/(auth)/signup/actions.ts`에 남겨둔 디버그용 에러 메시지를 사용자 친화적 문구로 되돌리기
 
 ---
 
