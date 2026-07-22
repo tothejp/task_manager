@@ -39,7 +39,10 @@ export default async function DashboardPage() {
               <NavCard href="/admin/assign" title="과업 배정" desc="드래그&드롭으로 팀원 배정" />
             </>
           ) : (
-            <NavCard href="/schedule" title="내 일정 입력" desc="가용 여부·휴가·휴무 등록" />
+            <>
+              <NavCard href="/schedule" title="내 일정 입력" desc="가용 여부·휴가·휴무 등록" />
+              <NavCard href="/my-tasks" title="내 임무 확인" desc="배정된 과업 확인 및 완료 체크" />
+            </>
           )}
         </div>
       </main>

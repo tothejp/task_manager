@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
+import { getCurrentMonth, getAdjacentMonth } from "@/lib/date";
 import { SkillManagement } from "@/components/admin/SkillManagement";
 
 type AvailabilityStatus = "available" | "vacation" | "dayoff";
@@ -22,7 +23,7 @@ function getTodayDateString(): string {
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: { date?: string; skill?: string; error?: string };
+  searchParams: { date?: string; skill?: string; error?: string; month?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -37,6 +38,8 @@ export default async function AdminDashboardPage({
   const isMobile = isMobileUserAgent(headers().get("user-agent"));
   const date = searchParams.date ?? getTodayDateString();
   const selectedSkillId = searchParams.skill ?? "";
+  const month = searchParams.month ?? getCurrentMonth();
+  const today = getTodayDateString();
 
   const [membersRes, skillTagsRes, memberSkillsRes, availabilityRes] = await Promise.all([
     supabase.from("members").select("id, name").eq("team_id", member.team_id).order("name"),
@@ -44,6 +47,68 @@ export default async function AdminDashboardPage({
     supabase.from("member_skills").select("member_id, skill_tag_id"),
     supabase.from("availabilities").select("member_id, status").eq("start_date", date),
   ]);
+
+  // 미완료 강조: 과거 날짜에 배정됐지만 아직 완료 체크되지 않은 건 (PRD 3.8)
+  const pastTasksRes = await supabase
+    .from("tasks")
+    .select("id, title, date, start_time, end_time")
+    .eq("team_id", member.team_id)
+    .lt("date", today);
+
+  const pastTaskIds = (pastTasksRes.data ?? []).map((t) => t.id);
+  const pastTasksById = new Map((pastTasksRes.data ?? []).map((t) => [t.id, t]));
+
+  const incompleteRes =
+    pastTaskIds.length > 0
+      ? await supabase
+          .from("assignments")
+          .select("id, member_id, task_id")
+          .in("task_id", pastTaskIds)
+          .eq("status", "assigned")
+      : { data: [] as { id: string; member_id: string; task_id: string }[] };
+
+  const memberNameById = new Map((membersRes.data ?? []).map((m) => [m.id, m.name]));
+
+  const incompleteList = (incompleteRes.data ?? [])
+    .map((a) => {
+      const task = pastTasksById.get(a.task_id);
+      if (!task) return null;
+      return {
+        assignmentId: a.id,
+        taskTitle: task.title,
+        date: task.date,
+        startTime: task.start_time,
+        endTime: task.end_time,
+        memberName: memberNameById.get(a.member_id) ?? "?",
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // 완료율: 선택된 월의 배정(공백 제외) 중 완료 비율 (PRD 3.8)
+  const periodTasksRes = await supabase
+    .from("tasks")
+    .select("id")
+    .eq("team_id", member.team_id)
+    .gte("date", `${month}-01`)
+    .lte("date", `${month}-31`);
+
+  const periodTaskIds = (periodTasksRes.data ?? []).map((t) => t.id);
+
+  const periodAssignmentsRes =
+    periodTaskIds.length > 0
+      ? await supabase
+          .from("assignments")
+          .select("status")
+          .in("task_id", periodTaskIds)
+          .neq("status", "vacant")
+      : { data: [] as { status: string }[] };
+
+  const totalForRate = periodAssignmentsRes.data?.length ?? 0;
+  const completedForRate = (periodAssignmentsRes.data ?? []).filter(
+    (a) => a.status === "completed"
+  ).length;
+  const completionRate = totalForRate > 0 ? Math.round((completedForRate / totalForRate) * 100) : 0;
 
   const members = membersRes.data ?? [];
   const skillTags = skillTagsRes.data ?? [];
@@ -89,6 +154,9 @@ export default async function AdminDashboardPage({
           </Link>
           <Link href="/admin/assign" className="underline">
             과업 배정
+          </Link>
+          <Link href="/admin/fairness" className="underline">
+            공정성 지표
           </Link>
           <Link href="/" className="underline">
             홈으로
@@ -159,6 +227,31 @@ export default async function AdminDashboardPage({
           )}
         </tbody>
       </table>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="font-medium">미완료 과업</h2>
+        {incompleteList.length === 0 ? (
+          <p className="text-sm text-gray-500">미완료 과업이 없습니다.</p>
+        ) : (
+          incompleteList.map((it) => (
+            <p key={it.assignmentId} className="rounded bg-orange-50 p-2 text-sm text-orange-800">
+              {it.date} {it.startTime.slice(0, 5)}~{it.endTime.slice(0, 5)} &apos;{it.taskTitle}&apos; — {it.memberName}
+            </p>
+          ))
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">완료율</h2>
+          <div className="flex items-center gap-2 text-sm">
+            <Link href={`/admin?month=${getAdjacentMonth(month, -1)}`}>‹</Link>
+            <span>{month}</span>
+            <Link href={`/admin?month=${getAdjacentMonth(month, 1)}`}>›</Link>
+          </div>
+        </div>
+        <SummaryCard label={`${month} 완료율`} value={`${completionRate}%`} />
+      </section>
 
       {isMobile ? (
         <p className="text-sm text-gray-500">

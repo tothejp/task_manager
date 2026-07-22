@@ -2,13 +2,13 @@
 
 마지막 업데이트: 2026-07-22
 
-## 현재 단계: 운영 배포 완료, 8단계(휴가→재배정) 착수 전
+## 현재 단계: 1~9단계 기능 구현 완료, 전체 흐름 테스트 및 운영 확인 남음
 
 ---
 
 ## 완료된 작업
 
-### 기능 구현 (1~7단계)
+### 기능 구현 (1~9단계)
 - [x] PRD v0.5 확정 (`task_manager_PRD.md`)
 - [x] Prisma 스키마 작성 (`prisma/schema.prisma`) — 소문자 enum, start_date/end_date, task_skills, assignments date 컬럼 없음
 - [x] Supabase 클라이언트 초기화 (`lib/supabase/client.ts`, `server.ts`, `middleware.ts`)
@@ -20,6 +20,9 @@
 - [x] 과업 관리 — `/admin/tasks`, 반복 과업 생성/삭제
 - [x] D&D 배정 화면 — `/admin/assign`, 시간 중복 차단, 스킬 경고 모달
 - [x] 자동배정 — 순수 함수 `recommendAssignments()`, 미리보기→확정 플로우
+- [x] 휴가→재배정 (PRD 3.7) — `schedule/actions.ts`에서 휴가 등록 시 `apply_vacation_gaps` RPC 호출, `/admin/assign`에 공백 알림 표시 후 기존 자동배정으로 재배정
+- [x] 완료 체크 (PRD 3.8) — `/my-tasks`(팀원/모바일)에서 `mark_assignment_completed` RPC 호출, `/admin`에 미완료 과업 강조 및 월별 완료율 표시
+- [x] 공정성 지표 시각화 (PRD 3.9) — `/admin/fairness`, 구성원별 누적 배정 막대그래프, 평균 대비 ±20% 편차 경고 (`FAIRNESS_DEVIATION_THRESHOLD` 상수)
 - [x] 공통 유틸 — `isTimeOverlapping()`, `lib/date.ts`, `lib/device.ts`, `lib/auto-assign.ts`
 
 ### 운영 배포
@@ -45,10 +48,7 @@
 ---
 
 ## 다음 단계 (예정)
-1. **전체 흐름 테스트** — 회원가입 → 팀 생성 → 팀원 초대 → 일정 입력 → 배정 → 자동배정
-2. **휴가 등록 → 재배정 흐름** (PRD 3.7) — `apply_vacation_gaps` RPC 연동 확인 포함
-3. **완료 체크** (PRD 3.8) — `mark_assignment_completed` RPC 연동
-4. **공정성 지표 시각화** (PRD 3.9)
+1. **전체 흐름 테스트** — 회원가입 → 팀 생성 → 팀원 초대 → 일정 입력 → 배정 → 자동배정 → 휴가 재배정 → 완료 체크 → 공정성 지표 (Vercel 운영 환경에서 실사용자 계정으로 수동 검증 필요)
 
 ---
 
@@ -82,6 +82,7 @@
 ## 알려진 이슈
 - npm audit 경고 4건 (Next.js 14 라인, Next 15/16에서만 패치) — 스택 고정 정책상 유지
 - Tailwind CSS "No utility classes detected" 경고 (빌드에는 영향 없음)
+- `components/DeviceGuard.tsx`의 관리자 경로 체크(`'/dashboard' || '/tasks' || '/assignments'`)가 실제 라우트(`/admin`, `/admin/tasks`, `/admin/assign`)와 매칭되지 않아 "관리자가 모바일로 접속 시 PC 이용 안내" 배너가 현재 발동하지 않음 (미수정, 별도 작업 필요)
 
 ---
 
