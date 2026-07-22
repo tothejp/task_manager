@@ -17,7 +17,7 @@ export default function DeviceGuard({ children }: { children: React.ReactNode })
     const isMemberPath = pathname.startsWith('/schedule') || pathname.startsWith('/my-tasks')
     if (isMemberPath) {
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="flex-1 bg-gray-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-sm w-full text-center">
             <div className="text-4xl mb-4">📱</div>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">모바일에서 이용해주세요</h2>
@@ -43,7 +43,7 @@ export default function DeviceGuard({ children }: { children: React.ReactNode })
       pathname.startsWith('/admin/assign')
     if (isAdminActionPath) {
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="flex-1 bg-gray-50 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-sm w-full text-center">
             <div className="text-4xl mb-4">💻</div>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">PC에서 이용해주세요</h2>

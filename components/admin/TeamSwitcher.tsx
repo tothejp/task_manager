@@ -1,4 +1,4 @@
-import { setActiveTeam } from "@/lib/team-context";
+import { setActiveTeam } from "@/lib/team-switch-action";
 
 // [슈퍼관리자 전용] 관리자 화면에서 조회/조작할 팀을 전환하는 드롭다운
 export function TeamSwitcher({

@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
-import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
-import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
+import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { approveMember, rejectMember } from "./actions";
 
 // [관리자/PC] 팀 합류 신청한 팀원 승인 대기 목록 (이메일 인증 대체)
@@ -20,7 +18,6 @@ export default async function AdminMembersPage() {
 
   const isSuperadmin = await checkIsSuperadmin();
   const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
-  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
 
   const { data: pendingMembers } = await supabase
     .from("members")
@@ -30,15 +27,8 @@ export default async function AdminMembersPage() {
     .order("created_at");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">팀원 승인</h1>
-        <Link href="/admin" className="text-sm underline">
-          가용인원 대시보드로
-        </Link>
-      </div>
-
-      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin/members" />}
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <h1 className="text-2xl font-semibold text-gray-900">팀원 승인</h1>
 
       <div className="flex flex-col gap-3">
         {(pendingMembers ?? []).map((m) => (

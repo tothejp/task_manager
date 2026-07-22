@@ -24,7 +24,8 @@
 - [x] 완료 체크 (PRD 3.8) — `/my-tasks`(팀원/모바일)에서 `mark_assignment_completed` RPC 호출, `/admin`에 미완료 과업 강조 및 월별 완료율 표시
 - [x] 공정성 지표 시각화 (PRD 3.9) — `/admin/fairness`, 구성원별 누적 배정 막대그래프, 평균 대비 ±20% 편차 경고 (`FAIRNESS_DEVIATION_THRESHOLD` 상수)
 - [x] 가입 승인제 (이메일 인증 대체) — 팀 합류 신청자는 `members.status='pending'`으로 등록, `/pending` 대기 화면 표시, 관리자가 `/admin/members`에서 승인/거부. DB 변경은 `supabase/member_approval.sql`을 Supabase에서 직접 실행 필요 (아래 "진행 중인 작업" 참고)
-- [x] 슈퍼관리자 + 팀 전환 (tothejp 전용) — `members.user_id`가 전역 UNIQUE라 한 계정이 여러 팀의 정식 멤버가 될 수 없는 제약을 우회하기 위해 도입. `public.superadmins` 테이블 + `is_superadmin()` RLS 헬퍼로 모든 팀 데이터 접근 허용, 관리자 화면 헤더의 `TeamSwitcher`(쿠키 `active_team_id`)로 조회/조작 대상 팀 전환. `lib/team-context.ts`가 핵심 로직(`resolveEffectiveTeamId`)이고, 5개 관리자 페이지 + 4개 관리자 액션 파일의 `requireAdmin()`이 이를 통해 `member.team_id`를 해석된 팀으로 치환. DB 변경은 `supabase/superadmin.sql` 실행 필요. 초기 팀 3개(지원중대/운용중대/본부중대)도 이 스크립트가 생성하고 tothejp을 본부중대 admin + 슈퍼관리자로 등록함
+- [x] 슈퍼관리자 + 팀 전환 (tothejp 전용) — `members.user_id`가 전역 UNIQUE라 한 계정이 여러 팀의 정식 멤버가 될 수 없는 제약을 우회하기 위해 도입. `public.superadmins` 테이블 + `is_superadmin()` RLS 헬퍼로 모든 팀 데이터 접근 허용, 사이드바 하단의 `TeamSwitcher`(쿠키 `active_team_id`)로 조회/조작 대상 팀 전환. `lib/team-context.ts`가 핵심 로직(`resolveEffectiveTeamId`)이고, 5개 관리자 페이지 + 4개 관리자 액션 파일의 `requireAdmin()`이 이를 통해 `member.team_id`를 해석된 팀으로 치환. DB 변경은 `supabase/superadmin.sql` 실행 필요. 초기 팀 3개(지원중대/운용중대/본부중대)도 이 스크립트가 생성하고 tothejp을 본부중대 admin + 슈퍼관리자로 등록함
+- [x] UI 리디자인 — 앱 이름 "임무분담표"→"Task Manager"로 변경(탭 타이틀, 로그인 화면 로고형 브랜딩), 좌측 사이드바 도입(`components/layout/AppShell.tsx`+`Sidebar.tsx`, 관리자/팀원 화면 전체, `lucide-react` 아이콘), 각 페이지 헤더의 개별 nav-link 행 제거(사이드바로 통합), 관리자 대시보드 날짜 필터를 네이티브 input에서 캘린더 그리드(`components/admin/DateFilterCalendar.tsx`)로 교체, `/dashboard`를 nav-card 화면에서 순수 리다이렉트 라우터로 전환(로그인 직후 관리자→`/admin`, 팀원→`/schedule` 바로 이동), Geist 폰트를 body에 실제 적용. `TeamSwitcher`의 서버 액션(`setActiveTeam`)은 클라이언트 컴포넌트(`Sidebar.tsx`)에서 끌어쓰다 보니 `next/headers` 의존 코드가 클라이언트 번들에 섞여 빌드가 깨졌던 문제가 있어, `lib/team-switch-action.ts`로 액션만 분리해서 해결함
 - [x] 공통 유틸 — `isTimeOverlapping()`, `lib/date.ts`, `lib/device.ts`, `lib/auto-assign.ts`
 
 ### 운영 배포
@@ -56,13 +57,17 @@
 - **`supabase/fix_missing_defaults.sql` 실행 필요 (미완료, 사용자 직접 작업 필요, `superadmin.sql`보다 먼저)** — teams/members/skill_tags/tasks/assignments/availabilities id 기본값 누락 수정. 이거 없이는 superadmin.sql의 팀 생성도, 앱의 다른 insert(과업/스킬/배정/일정)도 계속 실패한다.
 - **`supabase/superadmin.sql` 실행 필요 (미완료, 사용자 직접 작업 필요)** — 슈퍼관리자 테이블/RPC, 온보딩용 팀 목록 RPC, 팀 전환을 위한 RLS 예외, 초기 팀 3개(지원중대/운용중대/본부중대) 생성이 이 스크립트 하나에 들어있음. 실행 전까지는 `/onboarding` 드롭다운이 비어있고 `/admin` 계열 페이지에서 팀 전환이 동작하지 않는다.
 - 회원가입 관련 디버그 에러 메시지가 `app/(auth)/signup/actions.ts`에 임시로 남아있음(사용자 요청으로 유지 중) — 나중에 정리 필요하면 알려줄 것.
+- 로그아웃 405 에러 원인 미확인 — 로컬 재현 시 코드 자체는 정상(POST→307). 사용자가 브라우저 Network 탭에서 실제 요청 Method를 확인해주기로 함. 로그아웃 버튼은 이제 사이드바 하단으로 이동(같은 `<form method="POST">` 패턴 재사용).
+- UI 리디자인(사이드바/캘린더 날짜선택/브랜딩)은 로컬에서 로그인 화면까지만 시각 확인함(Supabase 자격증명 없어 로그인 이후 화면은 미확인) — Vercel 배포 후 사이드바(관리자 5개 항목/팀원 2개 항목), 팀 전환 드롭다운, 관리자 대시보드 캘린더 날짜 선택 실사용 확인 필요.
 
 ---
 
 ## 다음 단계 (예정)
-1. `supabase/superadmin.sql`을 Supabase SQL Editor에서 실행
+1. `supabase/fix_missing_defaults.sql` → `supabase/superadmin.sql` 순서로 Supabase SQL Editor에서 실행(아직 안 했다면)
 2. **전체 흐름 테스트** — 일반 계정 가입(이메일 인증 없이 바로 로그인) → `/onboarding`에서 팀 드롭다운 선택+합류 신청 → `/pending` 진입 → tothejp 계정으로 `/admin/members`에서 승인 → 일정 입력 → 배정 → 자동배정 → 휴가 재배정 → 완료 체크 → 공정성 지표
 3. tothejp 계정으로 `/admin`, `/admin/tasks`, `/admin/assign`, `/admin/fairness`, `/admin/members`에서 팀 전환 드롭다운으로 지원중대/운용중대/본부중대를 오가며 각 팀 데이터가 올바르게 분리되어 보이는지 확인
+4. UI 리디자인 실사용 확인 — 사이드바 내비게이션, 관리자 대시보드 캘린더 날짜 선택, 로그아웃 버튼 동작
+5. 로그아웃 405 에러 재현 여부 확인(Network 탭 Method 확인)
 
 ---
 

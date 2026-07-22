@@ -34,13 +34,8 @@ export default async function SchedulePage({
     .lte("start_date", `${month}-31`);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">내 일정</h1>
-        <Link href="/" className="text-sm underline">
-          홈으로
-        </Link>
-      </div>
+    <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4">
+      <h1 className="text-2xl font-semibold text-gray-900">내 일정</h1>
 
       <div className="flex items-center justify-between">
         <Link href={`/schedule?month=${getAdjacentMonth(month, -1)}`} className="px-2 py-1 text-sm">

@@ -1,9 +1,8 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { CurrentMember } from "@/lib/get-current-member";
 
-const ACTIVE_TEAM_COOKIE = "active_team_id";
+export const ACTIVE_TEAM_COOKIE = "active_team_id";
 
 export async function checkIsSuperadmin(): Promise<boolean> {
   const supabase = await createClient();
@@ -32,18 +31,4 @@ export async function listAllTeamsForSuperadmin(): Promise<{ id: string; name: s
   const supabase = await createClient();
   const { data } = await supabase.from("teams").select("id, name").order("name");
   return data ?? [];
-}
-
-export async function setActiveTeam(formData: FormData) {
-  "use server";
-
-  const isSuperadmin = await checkIsSuperadmin();
-  if (!isSuperadmin) throw new Error("권한이 없습니다.");
-
-  const teamId = formData.get("teamId") as string;
-  const returnTo = (formData.get("returnTo") as string) || "/admin";
-  const cookieStore = await cookies();
-  cookieStore.set(ACTIVE_TEAM_COOKIE, teamId, { httpOnly: true, sameSite: "lax", path: "/" });
-
-  redirect(returnTo);
 }

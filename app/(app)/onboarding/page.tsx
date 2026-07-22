@@ -21,7 +21,7 @@ export default async function OnboardingPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">임무분담표</h1>
+        <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">Task Manager</h1>
         <p className="text-sm text-center text-gray-500 mb-8">
           소속 팀을 선택하고 합류 신청해주세요.
         </p>

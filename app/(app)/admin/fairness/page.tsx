@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
-import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
-import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
+import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 
 // PRD 3.9: 평균 대비 ±20% 이상 편차 시 경고
 const FAIRNESS_DEVIATION_THRESHOLD = 0.2;
@@ -22,7 +20,6 @@ export default async function FairnessPage() {
 
   const isSuperadmin = await checkIsSuperadmin();
   const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
-  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
 
   const [membersRes, teamTasksRes] = await Promise.all([
     supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
@@ -72,15 +69,8 @@ export default async function FairnessPage() {
     );
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">공정성 지표</h1>
-        <Link href="/admin" className="text-sm underline">
-          가용인원 대시보드로
-        </Link>
-      </div>
-
-      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin/fairness" />}
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <h1 className="text-2xl font-semibold text-gray-900">공정성 지표</h1>
 
       {warnings.length > 0 && (
         <div className="flex flex-col gap-1 rounded bg-orange-50 p-2 text-sm text-orange-800">

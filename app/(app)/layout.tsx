@@ -1,14 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DeviceGuard from '@/components/DeviceGuard'
+import { getCurrentMember } from '@/lib/get-current-member'
+import { AppShell } from '@/components/layout/AppShell'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   if (!user) redirect('/login')
 
-  // 팀이 있는지 확인 (온보딩 제외 경로에서)
+  const member = await getCurrentMember()
+
+  if (member && member.status === 'active') {
+    return (
+      <AppShell member={member}>
+        <DeviceGuard>{children}</DeviceGuard>
+      </AppShell>
+    )
+  }
+
   return (
     <DeviceGuard>
       {children}

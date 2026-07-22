@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { completeAssignment } from "./actions";
@@ -51,13 +50,8 @@ export default async function MyTasksPage({
   const completed = rows.filter((r) => r.status === "completed");
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">내 임무</h1>
-        <Link href="/" className="text-sm underline">
-          홈으로
-        </Link>
-      </div>
+    <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4">
+      <h1 className="text-2xl font-semibold text-gray-900">내 임무</h1>
 
       {searchParams.error && (
         <p className="rounded bg-red-50 p-2 text-sm text-red-700">{searchParams.error}</p>

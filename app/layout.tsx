@@ -15,7 +15,7 @@ const geistMono = localFont({
 })
 
 export const metadata: Metadata = {
-  title: '임무분담표',
+  title: 'Task Manager',
   description: '팀 임무 배정 관리 앱',
 }
 

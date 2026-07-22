@@ -5,9 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
 import { getCurrentMonth, getAdjacentMonth } from "@/lib/date";
-import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
+import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { SkillManagement } from "@/components/admin/SkillManagement";
-import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
+import { DateFilterCalendar } from "@/components/admin/DateFilterCalendar";
 
 type AvailabilityStatus = "available" | "vacation" | "dayoff";
 
@@ -25,7 +25,7 @@ function getTodayDateString(): string {
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: { date?: string; skill?: string; error?: string; month?: string };
+  searchParams: { date?: string; skill?: string; error?: string; month?: string; calMonth?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -39,13 +39,30 @@ export default async function AdminDashboardPage({
 
   const isSuperadmin = await checkIsSuperadmin();
   const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
-  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
 
   const isMobile = isMobileUserAgent(headers().get("user-agent"));
   const date = searchParams.date ?? getTodayDateString();
   const selectedSkillId = searchParams.skill ?? "";
   const month = searchParams.month ?? getCurrentMonth();
+  const calMonth = searchParams.calMonth ?? date.slice(0, 7);
   const today = getTodayDateString();
+
+  function dateHref(d: string): string {
+    const p = new URLSearchParams();
+    p.set("date", d);
+    if (selectedSkillId) p.set("skill", selectedSkillId);
+    if (searchParams.month) p.set("month", searchParams.month);
+    return `/admin?${p.toString()}`;
+  }
+
+  function calMonthHref(m: string): string {
+    const p = new URLSearchParams();
+    p.set("date", date);
+    p.set("calMonth", m);
+    if (selectedSkillId) p.set("skill", selectedSkillId);
+    if (searchParams.month) p.set("month", searchParams.month);
+    return `/admin?${p.toString()}`;
+  }
 
   const [membersRes, skillTagsRes, memberSkillsRes, availabilityRes] = await Promise.all([
     supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
@@ -151,50 +168,37 @@ export default async function AdminDashboardPage({
   });
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">가용인원 대시보드</h1>
-        <div className="flex gap-3 text-sm">
-          <Link href="/admin/tasks" className="underline">
-            과업 관리
-          </Link>
-          <Link href="/admin/assign" className="underline">
-            과업 배정
-          </Link>
-          <Link href="/admin/fairness" className="underline">
-            공정성 지표
-          </Link>
-          <Link href="/admin/members" className="underline">
-            팀원 승인
-          </Link>
-          <Link href="/" className="underline">
-            홈으로
-          </Link>
-        </div>
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
+      <h1 className="text-2xl font-semibold text-gray-900">가용인원 대시보드</h1>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <DateFilterCalendar
+          calMonth={calMonth}
+          selectedDate={date}
+          today={today}
+          dateHref={dateHref}
+          prevMonthHref={calMonthHref(getAdjacentMonth(calMonth, -1))}
+          nextMonthHref={calMonthHref(getAdjacentMonth(calMonth, 1))}
+        />
+
+        <form className="flex flex-wrap items-end gap-3" method="get">
+          <input type="hidden" name="date" value={date} />
+          <label className="flex flex-col text-sm">
+            스킬 필터
+            <select name="skill" defaultValue={selectedSkillId} className="rounded border px-2 py-1">
+              <option value="">전체</option>
+              {skillTags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="rounded bg-black px-3 py-2 text-sm text-white">
+            조회
+          </button>
+        </form>
       </div>
-
-      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin" />}
-
-      <form className="flex flex-wrap items-end gap-3" method="get">
-        <label className="flex flex-col text-sm">
-          날짜
-          <input type="date" name="date" defaultValue={date} className="rounded border px-2 py-1" />
-        </label>
-        <label className="flex flex-col text-sm">
-          스킬 필터
-          <select name="skill" defaultValue={selectedSkillId} className="rounded border px-2 py-1">
-            <option value="">전체</option>
-            {skillTags.map((tag) => (
-              <option key={tag.id} value={tag.id}>
-                {tag.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" className="rounded bg-black px-3 py-2 text-sm text-white">
-          조회
-        </button>
-      </form>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <SummaryCard label="전체 인원" value={`${roster.length}명`} />

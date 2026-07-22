@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
-import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
-import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
+import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { AssignmentBoard, type MemberCard, type TaskSlot } from "@/components/admin/AssignmentBoard";
 
 function getTodayDateString(): string {
@@ -30,7 +28,6 @@ export default async function AdminAssignPage({
 
   const isSuperadmin = await checkIsSuperadmin();
   const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
-  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
 
   const date = searchParams.date ?? getTodayDateString();
 
@@ -155,23 +152,8 @@ export default async function AdminAssignPage({
   const isMobile = isMobileUserAgent(headers().get("user-agent"));
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">과업 배정</h1>
-        <div className="flex gap-3 text-sm">
-          <Link href="/admin/tasks" className="underline">
-            과업 관리
-          </Link>
-          <Link href="/admin" className="underline">
-            가용인원 대시보드
-          </Link>
-          <Link href="/" className="underline">
-            홈으로
-          </Link>
-        </div>
-      </div>
-
-      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin/assign" />}
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-6">
+      <h1 className="text-2xl font-semibold text-gray-900">과업 배정</h1>
 
       <form method="get" className="flex items-end gap-3">
         <label className="flex flex-col text-sm">
