@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
+import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import {
   enumerateDailyOccurrences,
   enumerateWeeklyOccurrences,
@@ -27,7 +28,10 @@ async function requireAdmin() {
     throw new Error("관리자만 수행할 수 있는 작업입니다.");
   }
 
-  return { supabase, member };
+  const isSuperadmin = await checkIsSuperadmin();
+  const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
+
+  return { supabase, member: { ...member, team_id: teamId } };
 }
 
 function datesForRepeat(date: string, repeatType: RepeatType): string[] {

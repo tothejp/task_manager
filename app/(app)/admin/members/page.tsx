@@ -2,9 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
+import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
+import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
 import { approveMember, rejectMember } from "./actions";
 
-// [관리자/PC] 초대코드로 합류한 팀원 승인 대기 목록 (이메일 인증 대체)
+// [관리자/PC] 팀 합류 신청한 팀원 승인 대기 목록 (이메일 인증 대체)
 export default async function AdminMembersPage() {
   const supabase = await createClient();
   const {
@@ -16,10 +18,14 @@ export default async function AdminMembersPage() {
   if (!member) redirect("/onboarding");
   if (member.role !== "admin") redirect("/");
 
+  const isSuperadmin = await checkIsSuperadmin();
+  const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
+  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
+
   const { data: pendingMembers } = await supabase
     .from("members")
     .select("id, name, created_at")
-    .eq("team_id", member.team_id)
+    .eq("team_id", teamId)
     .eq("status", "pending")
     .order("created_at");
 
@@ -31,6 +37,8 @@ export default async function AdminMembersPage() {
           가용인원 대시보드로
         </Link>
       </div>
+
+      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin/members" />}
 
       <div className="flex flex-col gap-3">
         {(pendingMembers ?? []).map((m) => (

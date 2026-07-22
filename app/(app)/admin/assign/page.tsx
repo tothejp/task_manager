@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
+import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
+import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
 import { AssignmentBoard, type MemberCard, type TaskSlot } from "@/components/admin/AssignmentBoard";
 
 function getTodayDateString(): string {
@@ -26,18 +28,22 @@ export default async function AdminAssignPage({
   if (!member) redirect("/onboarding");
   if (member.role !== "admin") redirect("/");
 
+  const isSuperadmin = await checkIsSuperadmin();
+  const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
+  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
+
   const date = searchParams.date ?? getTodayDateString();
 
   const [membersRes, availRes, skillTagsRes, memberSkillsRes, tasksRes, requiredSkillsRes] =
     await Promise.all([
-      supabase.from("members").select("id, name").eq("team_id", member.team_id).order("name"),
+      supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
       supabase.from("availabilities").select("member_id, status").eq("start_date", date),
-      supabase.from("skill_tags").select("id, name").eq("team_id", member.team_id),
+      supabase.from("skill_tags").select("id, name").eq("team_id", teamId),
       supabase.from("member_skills").select("member_id, skill_tag_id"),
       supabase
         .from("tasks")
         .select("id, title, start_time, end_time, required_headcount")
-        .eq("team_id", member.team_id)
+        .eq("team_id", teamId)
         .eq("date", date)
         .order("start_time"),
       supabase.from("task_skills").select("task_id, skill_tag_id"),
@@ -164,6 +170,8 @@ export default async function AdminAssignPage({
           </Link>
         </div>
       </div>
+
+      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin/assign" />}
 
       <form method="get" className="flex items-end gap-3">
         <label className="flex flex-col text-sm">

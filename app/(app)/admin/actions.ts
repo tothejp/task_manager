@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
+import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -16,7 +17,10 @@ async function requireAdmin() {
     throw new Error("관리자만 수행할 수 있는 작업입니다.");
   }
 
-  return { supabase, member };
+  const isSuperadmin = await checkIsSuperadmin();
+  const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
+
+  return { supabase, member: { ...member, team_id: teamId } };
 }
 
 // 팀별 스킬 태그 생성 (PRD 3.1: 스킬 태그는 관리자만 부여/회수 가능)

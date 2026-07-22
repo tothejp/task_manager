@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { OnboardingForm } from '@/components/OnboardingForm'
 
 export default async function OnboardingPage() {
   const supabase = await createClient()
@@ -16,26 +16,17 @@ export default async function OnboardingPage() {
 
   if (member) redirect('/dashboard')
 
+  const { data: teams } = await supabase.rpc('list_teams_for_onboarding')
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">임무분담표</h1>
-        <p className="text-sm text-center text-gray-500 mb-8">시작하려면 팀이 필요합니다.</p>
+        <p className="text-sm text-center text-gray-500 mb-8">
+          소속 팀을 선택하고 합류 신청해주세요.
+        </p>
 
-        <div className="space-y-3">
-          <Link
-            href="/team/new"
-            className="block w-full bg-blue-600 text-white text-center py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors"
-          >
-            새 팀 만들기
-          </Link>
-          <Link
-            href="/join"
-            className="block w-full bg-white text-gray-900 text-center py-3 rounded-xl font-medium border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            초대 코드로 팀 합류하기
-          </Link>
-        </div>
+        <OnboardingForm teams={teams ?? []} />
       </div>
     </div>
   )

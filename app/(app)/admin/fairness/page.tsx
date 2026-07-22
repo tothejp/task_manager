@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
+import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
+import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
 
 // PRD 3.9: 평균 대비 ±20% 이상 편차 시 경고
 const FAIRNESS_DEVIATION_THRESHOLD = 0.2;
@@ -18,9 +20,13 @@ export default async function FairnessPage() {
   if (!member) redirect("/onboarding");
   if (member.role !== "admin") redirect("/");
 
+  const isSuperadmin = await checkIsSuperadmin();
+  const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
+  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
+
   const [membersRes, teamTasksRes] = await Promise.all([
-    supabase.from("members").select("id, name").eq("team_id", member.team_id).order("name"),
-    supabase.from("tasks").select("id").eq("team_id", member.team_id),
+    supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
+    supabase.from("tasks").select("id").eq("team_id", teamId),
   ]);
 
   const teamTaskIds = (teamTasksRes.data ?? []).map((t) => t.id);
@@ -73,6 +79,8 @@ export default async function FairnessPage() {
           가용인원 대시보드로
         </Link>
       </div>
+
+      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin/fairness" />}
 
       {warnings.length > 0 && (
         <div className="flex flex-col gap-1 rounded bg-orange-50 p-2 text-sm text-orange-800">

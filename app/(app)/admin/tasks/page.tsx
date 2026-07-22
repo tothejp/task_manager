@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
+import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
+import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
 import { createTask, deleteTask } from "./actions";
 
 const REPEAT_LABELS: Record<string, string> = {
@@ -32,6 +34,10 @@ export default async function AdminTasksPage({
   if (!member) redirect("/onboarding");
   if (member.role !== "admin") redirect("/");
 
+  const isSuperadmin = await checkIsSuperadmin();
+  const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
+  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
+
   const isMobile = isMobileUserAgent(headers().get("user-agent"));
   const from = searchParams.from ?? getTodayDateString();
 
@@ -39,11 +45,11 @@ export default async function AdminTasksPage({
     supabase
       .from("tasks")
       .select("id, title, description, date, start_time, end_time, required_headcount, repeat_type")
-      .eq("team_id", member.team_id)
+      .eq("team_id", teamId)
       .gte("date", from)
       .order("date")
       .order("start_time"),
-    supabase.from("skill_tags").select("id, name").eq("team_id", member.team_id).order("name"),
+    supabase.from("skill_tags").select("id, name").eq("team_id", teamId).order("name"),
     supabase.from("task_skills").select("task_id, skill_tag_id"),
   ]);
 
@@ -73,6 +79,8 @@ export default async function AdminTasksPage({
           </Link>
         </div>
       </div>
+
+      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin/tasks" />}
 
       {searchParams.error && (
         <p className="rounded bg-red-50 p-2 text-sm text-red-700">{searchParams.error}</p>

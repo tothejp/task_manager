@@ -5,7 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
 import { getCurrentMonth, getAdjacentMonth } from "@/lib/date";
+import { checkIsSuperadmin, resolveEffectiveTeamId, listAllTeamsForSuperadmin } from "@/lib/team-context";
 import { SkillManagement } from "@/components/admin/SkillManagement";
+import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
 
 type AvailabilityStatus = "available" | "vacation" | "dayoff";
 
@@ -35,6 +37,10 @@ export default async function AdminDashboardPage({
   if (!member) redirect("/onboarding");
   if (member.role !== "admin") redirect("/");
 
+  const isSuperadmin = await checkIsSuperadmin();
+  const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
+  const allTeams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
+
   const isMobile = isMobileUserAgent(headers().get("user-agent"));
   const date = searchParams.date ?? getTodayDateString();
   const selectedSkillId = searchParams.skill ?? "";
@@ -42,8 +48,8 @@ export default async function AdminDashboardPage({
   const today = getTodayDateString();
 
   const [membersRes, skillTagsRes, memberSkillsRes, availabilityRes] = await Promise.all([
-    supabase.from("members").select("id, name").eq("team_id", member.team_id).order("name"),
-    supabase.from("skill_tags").select("id, name").eq("team_id", member.team_id).order("name"),
+    supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
+    supabase.from("skill_tags").select("id, name").eq("team_id", teamId).order("name"),
     supabase.from("member_skills").select("member_id, skill_tag_id"),
     supabase.from("availabilities").select("member_id, status").eq("start_date", date),
   ]);
@@ -52,7 +58,7 @@ export default async function AdminDashboardPage({
   const pastTasksRes = await supabase
     .from("tasks")
     .select("id, title, date, start_time, end_time")
-    .eq("team_id", member.team_id)
+    .eq("team_id", teamId)
     .lt("date", today);
 
   const pastTaskIds = (pastTasksRes.data ?? []).map((t) => t.id);
@@ -89,7 +95,7 @@ export default async function AdminDashboardPage({
   const periodTasksRes = await supabase
     .from("tasks")
     .select("id")
-    .eq("team_id", member.team_id)
+    .eq("team_id", teamId)
     .gte("date", `${month}-01`)
     .lte("date", `${month}-31`);
 
@@ -166,6 +172,8 @@ export default async function AdminDashboardPage({
           </Link>
         </div>
       </div>
+
+      {isSuperadmin && <TeamSwitcher teams={allTeams} activeTeamId={teamId} returnTo="/admin" />}
 
       <form className="flex flex-wrap items-end gap-3" method="get">
         <label className="flex flex-col text-sm">
