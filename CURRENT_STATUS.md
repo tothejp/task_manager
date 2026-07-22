@@ -46,14 +46,12 @@
 
 ## 진행 중인 작업
 - Vercel 환경변수 최종 설정 및 Redeploy 확인
-- **가입 승인제 DB 반영**:
-  1. [x] `supabase/member_approval.sql` Supabase SQL Editor에서 실행 완료 (members.status 컬럼, RLS 정책 갱신)
-  2. [ ] Supabase 대시보드 → Authentication → Providers → Email → "Confirm email" 끄기 — **아직 미완료**. 이걸 끄기 전까지는 새 팀원이 여전히 이메일 인증 절차를 거쳐야 하고, "이메일 인증이 무겁다"는 원래 문제가 해결되지 않은 상태다.
+- 가입 승인제 DB 반영 완료: `supabase/member_approval.sql` 실행 + Supabase "Confirm email" 비활성화 모두 적용됨. 실사용 흐름(가입 → 팀 생성/합류 → `/pending` → 관리자 승인)은 아직 수동 검증 전 (아래 "다음 단계" 참고).
 
 ---
 
 ## 다음 단계 (예정)
-1. **전체 흐름 테스트** — 회원가입 → 팀 생성 → 팀원 초대 → 일정 입력 → 배정 → 자동배정 → 휴가 재배정 → 완료 체크 → 공정성 지표 (Vercel 운영 환경에서 실사용자 계정으로 수동 검증 필요)
+1. **전체 흐름 테스트** — 회원가입(이메일 인증 없이 즉시 로그인 확인) → 팀 생성 → 초대코드로 팀원 합류(`/pending` 진입 확인) → 관리자 `/admin/members`에서 승인 → 일정 입력 → 배정 → 자동배정 → 휴가 재배정 → 완료 체크 → 공정성 지표 (Vercel 운영 환경에서 실사용자 계정으로 수동 검증 필요)
 
 ---
 
