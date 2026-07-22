@@ -12,15 +12,11 @@
 --
 -- 주의: 팀 생성 및 구성원 초대(가입)는 아래 create_team_with_admin() /
 --       join_team_with_invite_code() SECURITY DEFINER 함수로만 처리한다.
---       서비스 롤 키를 앱 서버에 두지 않고도(최소 권한 원칙) teams/members에
---       최초 행을 삽입할 수 있도록 하기 위함이며, 그래서 teams/members에는
---       별도의 INSERT 정책이 없다 (해당 함수가 RLS를 우회해 대신 삽입한다).
 -- ============================================================
 
 -- ------------------------------------------------------------
 -- 헬퍼 함수
--- SECURITY DEFINER + search_path 고정: RLS가 걸린 members 테이블을 참조할 때
--- 정책 자기참조로 인한 무한 재귀를 피하고, search_path 하이재킹을 방지한다
+-- SECURITY DEFINER + search_path 고정: RLS 자기참조 무한재귀 방지
 -- ------------------------------------------------------------
 create or replace function public.current_member_team_id()
 returns uuid
@@ -41,7 +37,7 @@ stable
 as $$
   select exists (
     select 1 from public.members
-    where user_id = auth.uid() and role = 'ADMIN'
+    where user_id = auth.uid() and role = 'admin'
   );
 $$;
 
@@ -59,7 +55,7 @@ on public.teams for update
 using (id = public.current_member_team_id() and public.is_current_user_admin())
 with check (id = public.current_member_team_id() and public.is_current_user_admin());
 
--- 팀 생성: 이미 다른 팀 소속이면 차단(멤버는 팀 1개까지, members.user_id UNIQUE와 동일한 전제)
+-- 팀 생성: 이미 다른 팀 소속이면 차단
 create or replace function public.create_team_with_admin(p_team_name text, p_admin_name text)
 returns public.teams
 language plpgsql
@@ -78,7 +74,7 @@ begin
   returning * into v_team;
 
   insert into public.members (team_id, user_id, role, name)
-  values (v_team.id, auth.uid(), 'ADMIN', p_admin_name);
+  values (v_team.id, auth.uid(), 'admin', p_admin_name);
 
   return v_team;
 end;
@@ -86,7 +82,7 @@ $$;
 
 grant execute on function public.create_team_with_admin(text, text) to authenticated;
 
--- 초대 링크 참여: 초대 코드로 팀을 찾아 팀원(MEMBER)으로 가입시킨다
+-- 초대 링크 참여
 create or replace function public.join_team_with_invite_code(p_invite_code text, p_member_name text)
 returns public.teams
 language plpgsql
@@ -107,7 +103,7 @@ begin
   end if;
 
   insert into public.members (team_id, user_id, role, name)
-  values (v_team.id, auth.uid(), 'MEMBER', p_member_name);
+  values (v_team.id, auth.uid(), 'member', p_member_name);
 
   return v_team;
 end;
@@ -182,9 +178,7 @@ with check (
 );
 
 -- ------------------------------------------------------------
--- availabilities: 본인 것은 본인이 쓰기, 조회는 본인 또는 같은 팀 관리자만
---   (PRD 3.3 가용인원 판단은 관리자 전용 기능이며, 팀원끼리 서로의 일정을
---    조회할 필요는 없다)
+-- availabilities
 -- ------------------------------------------------------------
 alter table public.availabilities enable row level security;
 
@@ -217,7 +211,7 @@ with check (
 );
 
 -- ------------------------------------------------------------
--- tasks: 같은 팀은 조회, 쓰기는 관리자만
+-- tasks
 -- ------------------------------------------------------------
 alter table public.tasks enable row level security;
 
@@ -231,27 +225,27 @@ using (team_id = public.current_member_team_id() and public.is_current_user_admi
 with check (team_id = public.current_member_team_id() and public.is_current_user_admin());
 
 -- ------------------------------------------------------------
--- task_required_skills: tasks와 동일한 권한을 상속
+-- task_skills
 -- ------------------------------------------------------------
-alter table public.task_required_skills enable row level security;
+alter table public.task_skills enable row level security;
 
-create policy "task_required_skills_select_same_team"
-on public.task_required_skills for select
+create policy "task_skills_select_same_team"
+on public.task_skills for select
 using (
   exists (
     select 1 from public.tasks t
-    where t.id = task_required_skills.task_id
+    where t.id = task_skills.task_id
       and t.team_id = public.current_member_team_id()
   )
 );
 
-create policy "task_required_skills_write_admin_only"
-on public.task_required_skills for all
+create policy "task_skills_write_admin_only"
+on public.task_skills for all
 using (
   public.is_current_user_admin()
   and exists (
     select 1 from public.tasks t
-    where t.id = task_required_skills.task_id
+    where t.id = task_skills.task_id
       and t.team_id = public.current_member_team_id()
   )
 )
@@ -259,18 +253,13 @@ with check (
   public.is_current_user_admin()
   and exists (
     select 1 from public.tasks t
-    where t.id = task_required_skills.task_id
+    where t.id = task_skills.task_id
       and t.team_id = public.current_member_team_id()
   )
 );
 
 -- ------------------------------------------------------------
 -- assignments
---   - 조회: 같은 팀 전체(팀원은 본인 배정 확인, 관리자는 전체 배정 현황 확인)
---   - 배정/재배정/삭제(insert/update/delete): 관리자만 (D&D, 자동배정은 PC 전용)
---   - 완료 체크는 아래 mark_assignment_completed() 함수로만 허용한다
---     (테이블 UPDATE를 팀원에게 직접 열어주면 member_id, skill_override 등
---      다른 컬럼까지 임의로 바꿀 수 있어 컬럼 단위 통제가 필요했다)
 -- ------------------------------------------------------------
 alter table public.assignments enable row level security;
 
@@ -303,6 +292,7 @@ with check (
   )
 );
 
+-- 팀원 완료 체크 전용 함수 (assignments UPDATE 권한 없이 status만 변경)
 create or replace function public.mark_assignment_completed(p_assignment_id uuid)
 returns void
 language plpgsql
@@ -311,9 +301,9 @@ set search_path = public
 as $$
 begin
   update public.assignments
-  set status = 'COMPLETED', updated_at = now()
+  set status = 'completed'
   where id = p_assignment_id
-    and status = 'ASSIGNED'
+    and status = 'assigned'
     and member_id in (
       select id from public.members where user_id = auth.uid()
     );
@@ -326,10 +316,8 @@ $$;
 
 grant execute on function public.mark_assignment_completed(uuid) to authenticated;
 
--- 휴가 등록 시 이미 배정된 과업을 "공백" 상태로 자동 전환한다 (PRD 3.7).
--- 팀원은 assignments 테이블에 대한 UPDATE 권한이 없으므로(assignments_write_admin_only가
--- 관리자 전용) 이 SECURITY DEFINER 함수로만 전환을 허용한다. member_id는 클라이언트 입력을
--- 신뢰하지 않고 auth.uid()로 직접 도출해, 본인의 배정만 전환할 수 있도록 제한한다.
+-- 휴가 등록 시 배정된 과업을 vacant 상태로 전환 (PRD 3.7)
+-- assignments에 date 컬럼 없으므로 tasks 테이블을 경유한다
 create or replace function public.apply_vacation_gaps(p_dates date[])
 returns void
 language plpgsql
@@ -346,10 +334,12 @@ begin
   end if;
 
   update public.assignments
-  set status = 'EMPTY', updated_at = now()
+  set status = 'vacant'
   where member_id = v_member_id
-    and date = any(p_dates)
-    and status = 'ASSIGNED';
+    and task_id in (
+      select id from public.tasks where date = any(p_dates)
+    )
+    and status = 'assigned';
 end;
 $$;
 

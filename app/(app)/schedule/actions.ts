@@ -64,7 +64,6 @@ export async function setDayStatus(formData: FormData) {
   if (status === "vacation") {
     const supabase = await createClient();
     const { error } = await supabase.rpc("apply_vacation_gaps", {
-      p_member_id: member.id,
       p_dates: dates,
     });
     if (error) throw new Error(error.message);
