@@ -26,7 +26,12 @@ export async function createTeam(prevState: { error: string } | null, formData: 
     .single()
 
   // TODO: 원인 진단 후 사용자 친화적 메시지로 되돌릴 것
-  if (teamError || !team) return { error: `[디버그:team] ${teamError?.code ?? ''} ${teamError?.message ?? '데이터 없음'}` }
+  if (teamError || !team) {
+    const { data: sessionData } = await supabase.auth.getSession()
+    return {
+      error: `[디버그:team] ${teamError?.code ?? ''} ${teamError?.message ?? '데이터 없음'} | user.id=${user.id} | session.user.id=${sessionData.session?.user?.id ?? '없음'} | expires_at=${sessionData.session?.expires_at ?? '없음'}`,
+    }
+  }
 
   // 관리자 구성원 등록
   const { error: memberError } = await supabase
