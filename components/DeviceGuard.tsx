@@ -39,9 +39,8 @@ export default function DeviceGuard({ children }: { children: React.ReactNode })
   // 관리자가 모바일로 배정/생성 작업 시도
   if (deviceType === 'mobile' && !dismissed) {
     const isAdminActionPath =
-      pathname.startsWith('/dashboard') ||
-      pathname.startsWith('/tasks') ||
-      pathname.startsWith('/assignments')
+      pathname.startsWith('/admin/tasks') ||
+      pathname.startsWith('/admin/assign')
     if (isAdminActionPath) {
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
