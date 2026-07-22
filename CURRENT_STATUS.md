@@ -46,10 +46,9 @@
 
 ## 진행 중인 작업
 - Vercel 환경변수 최종 설정 및 Redeploy 확인
-- **가입 승인제 DB 반영 (미완료, 사용자 직접 작업 필요)**:
-  1. `supabase/member_approval.sql`을 Supabase SQL Editor에서 실행 (members.status 컬럼 추가, RLS 정책 갱신)
-  2. Supabase 대시보드 → Authentication → Providers → Email → "Confirm email" 끄기
-  둘 다 적용 전까지는 새 팀원 합류 시 여전히 이메일 인증이 요구되고, 승인 화면(`/pending`, `/admin/members`)이 DB 컬럼 없이는 에러가 난다.
+- **가입 승인제 DB 반영**:
+  1. [x] `supabase/member_approval.sql` Supabase SQL Editor에서 실행 완료 (members.status 컬럼, RLS 정책 갱신)
+  2. [ ] Supabase 대시보드 → Authentication → Providers → Email → "Confirm email" 끄기 — **아직 미완료**. 이걸 끄기 전까지는 새 팀원이 여전히 이메일 인증 절차를 거쳐야 하고, "이메일 인증이 무겁다"는 원래 문제가 해결되지 않은 상태다.
 
 ---
 
