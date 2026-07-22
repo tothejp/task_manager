@@ -21,7 +21,8 @@ export async function signup(prevState: { error: string } | null, formData: Form
   const { error } = await supabase.auth.signUp({ email, password })
 
   if (error) {
-    return { error: '회원가입에 실패했습니다. 이미 사용 중인 이메일일 수 있습니다.' }
+    // TODO: 원인 진단 후 사용자 친화적 메시지로 되돌릴 것
+    return { error: `[디버그] ${error.status ?? ''} ${error.message}` }
   }
 
   redirect('/onboarding')
