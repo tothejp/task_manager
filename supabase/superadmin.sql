@@ -1,6 +1,7 @@
 -- 슈퍼관리자(tothejp) 도입 + 팀 생성 방식을 "관리자가 미리 만든 팀 중 드롭다운 선택"으로 전환.
+-- 전체 스크립트를 여러 번 실행해도 안전하도록(재실행 대비) 가능한 부분은 idempotent하게 작성한다.
 -- 1) 슈퍼관리자 테이블 + 헬퍼
-create table public.superadmins (
+create table if not exists public.superadmins (
   user_id uuid primary key references auth.users(id) on delete cascade
 );
 alter table public.superadmins enable row level security;
@@ -18,7 +19,8 @@ as $$
 $$;
 grant execute on function public.is_superadmin() to authenticated;
 
-insert into public.superadmins (user_id) values ('9f3bf87d-5b5b-44ad-af9e-52ff442aca3e');
+insert into public.superadmins (user_id) values ('9f3bf87d-5b5b-44ad-af9e-52ff442aca3e')
+on conflict (user_id) do nothing;
 
 -- 2) 온보딩용 팀 목록 조회 RPC
 -- 아직 어느 팀에도 속하지 않은 사용자도 팀 이름 목록을 봐야 드롭다운을 채울 수 있다.
@@ -201,11 +203,17 @@ with check (
 );
 
 -- 4) 초기 팀 3개 생성 + tothejp을 본부중대 admin으로 등록
-insert into public.teams (id, name, created_by) values
-  (gen_random_uuid(), '지원중대', '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e'),
-  (gen_random_uuid(), '운용중대', '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e'),
-  (gen_random_uuid(), '본부중대', '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e');
+-- invite_code는 not null 컬럼이라 명시적으로 채운다(기존 초대코드 합류 흐름은 폐기됐으므로 값 자체는 더 이상 쓰이지 않는다).
+-- 이미 같은 이름의 팀이 있으면 다시 만들지 않는다(재실행 대비).
+insert into public.teams (id, name, invite_code, created_by)
+select gen_random_uuid(), v.name, upper(substr(md5(random()::text || clock_timestamp()::text), 1, 8)), '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e'
+from (values ('지원중대'), ('운용중대'), ('본부중대')) as v(name)
+where not exists (select 1 from public.teams t where t.name = v.name);
 
 insert into public.members (team_id, user_id, role, status, name)
-select id, '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e', 'admin', 'active', '관리자'
-from public.teams where name = '본부중대';
+select t.id, '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e', 'admin', 'active', '관리자'
+from public.teams t
+where t.name = '본부중대'
+  and not exists (
+    select 1 from public.members m where m.user_id = '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e'
+  );
