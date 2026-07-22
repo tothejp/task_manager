@@ -39,6 +39,7 @@
 - RLS 정책의 대문자 enum 값(`'ADMIN'`, `'ASSIGNED'` 등) 소문자로 수정
 - `apply_vacation_gaps` RPC: assignments.date 컬럼 없으므로 tasks 조인으로 수정
 - `lib/supabase/middleware.ts` 누락 파일 생성
+- `DeviceGuard.tsx` 관리자 경로 체크가 실제 라우트(`/admin/tasks`, `/admin/assign`)와 매칭되지 않던 것 수정
 
 ---
 
@@ -82,7 +83,6 @@
 ## 알려진 이슈
 - npm audit 경고 4건 (Next.js 14 라인, Next 15/16에서만 패치) — 스택 고정 정책상 유지
 - Tailwind CSS "No utility classes detected" 경고 (빌드에는 영향 없음)
-- `components/DeviceGuard.tsx`의 관리자 경로 체크(`'/dashboard' || '/tasks' || '/assignments'`)가 실제 라우트(`/admin`, `/admin/tasks`, `/admin/assign`)와 매칭되지 않아 "관리자가 모바일로 접속 시 PC 이용 안내" 배너가 현재 발동하지 않음 (미수정, 별도 작업 필요)
 
 ---
 
