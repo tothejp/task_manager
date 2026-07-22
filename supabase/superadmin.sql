@@ -204,14 +204,15 @@ with check (
 
 -- 4) 초기 팀 3개 생성 + tothejp을 본부중대 admin으로 등록
 -- invite_code는 not null 컬럼이라 명시적으로 채운다(기존 초대코드 합류 흐름은 폐기됐으므로 값 자체는 더 이상 쓰이지 않는다).
+-- id/updated_at은 DB 기본값이 없어서(fix_missing_defaults.sql 참고) 명시적으로 채운다.
 -- 이미 같은 이름의 팀이 있으면 다시 만들지 않는다(재실행 대비).
-insert into public.teams (id, name, invite_code, created_by)
-select gen_random_uuid(), v.name, upper(substr(md5(random()::text || clock_timestamp()::text), 1, 8)), '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e'
+insert into public.teams (id, name, invite_code, created_by, updated_at)
+select gen_random_uuid(), v.name, upper(substr(md5(random()::text || clock_timestamp()::text), 1, 8)), '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e', now()
 from (values ('지원중대'), ('운용중대'), ('본부중대')) as v(name)
 where not exists (select 1 from public.teams t where t.name = v.name);
 
-insert into public.members (team_id, user_id, role, status, name)
-select t.id, '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e', 'admin', 'active', '관리자'
+insert into public.members (id, team_id, user_id, role, status, name, updated_at)
+select gen_random_uuid(), t.id, '9f3bf87d-5b5b-44ad-af9e-52ff442aca3e', 'admin', 'active', '관리자', now()
 from public.teams t
 where t.name = '본부중대'
   and not exists (

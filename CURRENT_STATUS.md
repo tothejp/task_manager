@@ -43,6 +43,7 @@
 - `lib/supabase/middleware.ts` 누락 파일 생성
 - `DeviceGuard.tsx` 관리자 경로 체크가 실제 라우트(`/admin/tasks`, `/admin/assign`)와 매칭되지 않던 것 수정
 - `tailwind.config.ts`의 `content`가 존재하지 않는 `./src/app`, `./src/components`를 가리키고 있어 Tailwind가 사용 중인 클래스를 하나도 못 찾고 있던 것 수정 (→ `./app`, `./components`). 이 때문에 운영 사이트가 스타일 없이 텍스트로만 렌더링되고 있었음 — 이전에 "빌드에는 영향 없음"이라 기록했던 "No utility classes detected" 경고가 실제로는 이 심각한 버그의 증상이었음
+- **[심각] `teams`/`members`/`skill_tags`/`tasks`/`assignments`/`availabilities` 테이블 전부 `id` 컬럼에 DB 기본값이 없었음** (`teams`/`members`는 `updated_at`도 없음). 앱 코드는 Prisma의 `@default(uuid())`/`@updatedAt`을 믿고 `id`/`updated_at`을 아예 안 넣고 insert해왔는데, 이 프로젝트는 Prisma Client를 안 쓰고 Supabase 클라이언트로만 쓰기 때문에 DB 레벨 기본값이 실제로 있어야 했음 — 스키마 생성 시 누락된 것으로 보임(같은 Supabase 프로젝트를 공유하는 BookLog 쪽 테이블들은 전부 `gen_random_uuid()` 기본값이 정상적으로 있어서 대조됨). 즉 팀 생성뿐 아니라 과업 생성/스킬 태그 생성/배정/일정 입력 등 **앱의 거의 모든 insert가 이 문제로 실패하고 있었을 가능성이 높음**. `supabase/fix_missing_defaults.sql`로 각 테이블에 `default gen_random_uuid()`/`default now()` 추가해서 해결(앱 코드는 그대로 두고 DB 기본값만 채움 — 코드 변경 불필요)
 - Supabase Auth "Enable Email provider" 설정이 꺼져있어 신규 회원가입이 전부 "Email signups are disabled"로 실패하던 것 발견 → 사용자가 대시보드에서 직접 켬
 - `teams`/`members` 테이블에 RLS는 켜져 있는데 INSERT 정책이 없어서 팀 생성/합류가 42501 에러로 막히던 것 발견 → `supabase/team_member_insert_policies.sql` 추가
 - 팀 생성 시 `.insert().select().single()`이 RETURNING 과정에서 `teams_select_own_team` SELECT 정책(본인이 이미 그 팀 members여야 함)과 충돌해 실패하던 근본 원인 발견 및 수정(`app/(app)/team/new/actions.ts`) — 이후 팀 생성 자체를 관리자 전용 SQL로 옮기면서 이 페이지는 삭제됨
@@ -52,6 +53,7 @@
 ## 진행 중인 작업
 - Vercel 환경변수 최종 설정 및 Redeploy 확인
 - 가입 승인제 DB 반영 완료: `supabase/member_approval.sql` 실행 + Supabase "Confirm email" 비활성화 모두 적용됨.
+- **`supabase/fix_missing_defaults.sql` 실행 필요 (미완료, 사용자 직접 작업 필요, `superadmin.sql`보다 먼저)** — teams/members/skill_tags/tasks/assignments/availabilities id 기본값 누락 수정. 이거 없이는 superadmin.sql의 팀 생성도, 앱의 다른 insert(과업/스킬/배정/일정)도 계속 실패한다.
 - **`supabase/superadmin.sql` 실행 필요 (미완료, 사용자 직접 작업 필요)** — 슈퍼관리자 테이블/RPC, 온보딩용 팀 목록 RPC, 팀 전환을 위한 RLS 예외, 초기 팀 3개(지원중대/운용중대/본부중대) 생성이 이 스크립트 하나에 들어있음. 실행 전까지는 `/onboarding` 드롭다운이 비어있고 `/admin` 계열 페이지에서 팀 전환이 동작하지 않는다.
 - 회원가입 관련 디버그 에러 메시지가 `app/(auth)/signup/actions.ts`에 임시로 남아있음(사용자 요청으로 유지 중) — 나중에 정리 필요하면 알려줄 것.
 
@@ -107,4 +109,5 @@
 - `supabase/rls_policies.sql` — RLS 정책 및 SECURITY DEFINER 함수
 - `supabase/member_approval.sql` — 가입 승인제 관련 추가 DB 변경 (Supabase에서 직접 실행 필요, 실행 완료)
 - `supabase/team_member_insert_policies.sql` — teams/members INSERT RLS 정책 (Supabase에서 직접 실행 필요, 실행 완료)
+- `supabase/fix_missing_defaults.sql` — id/updated_at 기본값 누락 수정 (Supabase에서 직접 실행 필요, **미실행**, superadmin.sql보다 먼저 실행)
 - `supabase/superadmin.sql` — 슈퍼관리자/팀 전환/초기 팀 3개 생성 (Supabase에서 직접 실행 필요, **미실행**)
