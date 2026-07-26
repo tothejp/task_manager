@@ -27,12 +27,22 @@ export function Sidebar({
 
   return (
     <aside className="flex w-16 shrink-0 flex-col border-r border-gray-200 bg-white md:w-60">
-      <div className="flex items-center gap-2 px-3 py-5 md:px-5">
+      <Link href="/dashboard" className="flex items-center gap-2 px-3 py-5 md:px-5">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600">
           <BrandIcon className="h-4 w-4 text-white" />
         </div>
         <span className="hidden text-base font-bold text-gray-900 md:inline">Task Manager</span>
-      </div>
+      </Link>
+
+      <Link
+        href="/me"
+        className="mx-2 mb-3 flex items-center justify-center rounded-lg px-2.5 py-2 text-center hover:bg-gray-50 md:justify-start md:text-left"
+      >
+        <p className="hidden truncate text-xs text-gray-500 md:block">
+          {teamName} · {memberName}
+        </p>
+        <span className="text-xs text-gray-500 md:hidden">{memberName.slice(0, 1)}</span>
+      </Link>
 
       <nav className="flex flex-1 flex-col gap-1 px-2">
         {items.map((item) => {
@@ -62,9 +72,6 @@ export function Sidebar({
             <TeamSwitcher teams={teams} activeTeamId={activeTeamId} returnTo={pathname} />
           </div>
         )}
-        <p className="hidden truncate px-2.5 text-xs text-gray-400 md:block">
-          {teamName} · {memberName}
-        </p>
         <form action="/api/auth/logout" method="POST">
           <button
             type="submit"

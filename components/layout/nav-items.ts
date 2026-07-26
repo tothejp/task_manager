@@ -12,11 +12,11 @@ import {
 export type NavItem = { href: string; label: string; icon: LucideIcon };
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
-  { href: "/admin", label: "가용인원 대시보드", icon: LayoutDashboard },
+  { href: "/admin", label: "중대 현황판", icon: LayoutDashboard },
   { href: "/admin/tasks", label: "과업 관리", icon: ClipboardList },
   { href: "/admin/assign", label: "과업 배정", icon: Users },
   { href: "/admin/fairness", label: "공정성 지표", icon: Scale },
-  { href: "/admin/members", label: "팀원 승인", icon: UserCheck },
+  { href: "/admin/organization", label: "조직원 관리", icon: UserCheck },
 ];
 
 export const MEMBER_NAV_ITEMS: NavItem[] = [

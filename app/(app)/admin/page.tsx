@@ -1,12 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
-import { isMobileUserAgent } from "@/lib/device";
 import { getCurrentMonth, getAdjacentMonth } from "@/lib/date";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
-import { SkillManagement } from "@/components/admin/SkillManagement";
 import { DateFilterCalendar } from "@/components/admin/DateFilterCalendar";
 
 type AvailabilityStatus = "available" | "vacation" | "dayoff";
@@ -21,11 +18,11 @@ function getTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// [관리자/PC] 가용인원 판단 + 스킬 필터링 대시보드 (PRD 3.3)
+// [관리자/PC] 중대 현황판 — 가용인원 판단 대시보드 (PRD 3.3)
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: { date?: string; skill?: string; error?: string; month?: string; calMonth?: string };
+  searchParams: { date?: string; month?: string; calMonth?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -40,9 +37,7 @@ export default async function AdminDashboardPage({
   const isSuperadmin = await checkIsSuperadmin();
   const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
 
-  const isMobile = isMobileUserAgent(headers().get("user-agent"));
   const date = searchParams.date ?? getTodayDateString();
-  const selectedSkillId = searchParams.skill ?? "";
   const month = searchParams.month ?? getCurrentMonth();
   const calMonth = searchParams.calMonth ?? date.slice(0, 7);
   const today = getTodayDateString();
@@ -50,7 +45,6 @@ export default async function AdminDashboardPage({
   function dateHref(d: string): string {
     const p = new URLSearchParams();
     p.set("date", d);
-    if (selectedSkillId) p.set("skill", selectedSkillId);
     if (searchParams.month) p.set("month", searchParams.month);
     return `/admin?${p.toString()}`;
   }
@@ -59,7 +53,6 @@ export default async function AdminDashboardPage({
     const p = new URLSearchParams();
     p.set("date", date);
     p.set("calMonth", m);
-    if (selectedSkillId) p.set("skill", selectedSkillId);
     if (searchParams.month) p.set("month", searchParams.month);
     return `/admin?${p.toString()}`;
   }
@@ -157,10 +150,6 @@ export default async function AdminDashboardPage({
 
   const availableCount = roster.filter((m) => m.status === "available").length;
 
-  const visibleRoster = selectedSkillId
-    ? roster.filter((m) => m.skillIds.includes(selectedSkillId))
-    : roster;
-
   const skillSummaries = skillTags.map((tag) => {
     const holders = roster.filter((m) => m.skillIds.includes(tag.id));
     const availableHolders = holders.filter((m) => m.status === "available");
@@ -169,7 +158,7 @@ export default async function AdminDashboardPage({
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold text-gray-900">가용인원 대시보드</h1>
+      <h1 className="text-2xl font-semibold text-gray-900">중대 현황판</h1>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <DateFilterCalendar
@@ -180,24 +169,6 @@ export default async function AdminDashboardPage({
           prevMonthHref={calMonthHref(getAdjacentMonth(calMonth, -1))}
           nextMonthHref={calMonthHref(getAdjacentMonth(calMonth, 1))}
         />
-
-        <form className="flex flex-wrap items-end gap-3" method="get">
-          <input type="hidden" name="date" value={date} />
-          <label className="flex flex-col text-sm">
-            스킬 필터
-            <select name="skill" defaultValue={selectedSkillId} className="rounded border px-2 py-1">
-              <option value="">전체</option>
-              {skillTags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="submit" className="rounded bg-black px-3 py-2 text-sm text-white">
-            조회
-          </button>
-        </form>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -221,7 +192,7 @@ export default async function AdminDashboardPage({
           </tr>
         </thead>
         <tbody>
-          {visibleRoster.map((m) => (
+          {roster.map((m) => (
             <tr key={m.id} className="border-b">
               <td className="py-2">{m.name}</td>
               <td className="py-2">{STATUS_LABELS[m.status]}</td>
@@ -233,7 +204,7 @@ export default async function AdminDashboardPage({
               </td>
             </tr>
           ))}
-          {visibleRoster.length === 0 && (
+          {roster.length === 0 && (
             <tr>
               <td colSpan={3} className="py-4 text-center text-gray-500">
                 해당 조건의 인원이 없습니다.
@@ -267,14 +238,6 @@ export default async function AdminDashboardPage({
         </div>
         <SummaryCard label={`${month} 완료율`} value={`${completionRate}%`} />
       </section>
-
-      {isMobile ? (
-        <p className="text-sm text-gray-500">
-          스킬 부여/회수 등 변경 작업은 PC에서만 가능합니다 (조회 전용).
-        </p>
-      ) : (
-        <SkillManagement members={roster} skillTags={skillTags} error={searchParams.error} />
-      )}
     </main>
   );
 }

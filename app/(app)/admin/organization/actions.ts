@@ -23,6 +23,32 @@ async function requireAdmin() {
   return { supabase, member: { ...member, team_id: teamId } };
 }
 
+// 가입 승인 대기 팀원 승인/거부 (이메일 인증 대체)
+export async function approveMember(memberId: string) {
+  const { supabase, member } = await requireAdmin();
+
+  await supabase
+    .from("members")
+    .update({ status: "active" })
+    .eq("id", memberId)
+    .eq("team_id", member.team_id);
+
+  revalidatePath("/admin/organization");
+}
+
+export async function rejectMember(memberId: string) {
+  const { supabase, member } = await requireAdmin();
+
+  await supabase
+    .from("members")
+    .delete()
+    .eq("id", memberId)
+    .eq("team_id", member.team_id)
+    .eq("status", "pending");
+
+  revalidatePath("/admin/organization");
+}
+
 // 팀별 스킬 태그 생성 (PRD 3.1: 스킬 태그는 관리자만 부여/회수 가능)
 export async function createSkillTag(formData: FormData) {
   const { supabase, member } = await requireAdmin();
@@ -33,10 +59,10 @@ export async function createSkillTag(formData: FormData) {
     .insert({ team_id: member.team_id, name: skillName });
 
   if (error) {
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`/admin/organization?error=${encodeURIComponent(error.message)}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/organization");
 }
 
 export async function grantSkill(formData: FormData) {
@@ -49,10 +75,10 @@ export async function grantSkill(formData: FormData) {
     .insert({ member_id: memberId, skill_tag_id: skillTagId });
 
   if (error) {
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`/admin/organization?error=${encodeURIComponent(error.message)}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/organization");
 }
 
 export async function revokeSkill(formData: FormData) {
@@ -67,8 +93,8 @@ export async function revokeSkill(formData: FormData) {
     .eq("skill_tag_id", skillTagId);
 
   if (error) {
-    redirect(`/admin?error=${encodeURIComponent(error.message)}`);
+    redirect(`/admin/organization?error=${encodeURIComponent(error.message)}`);
   }
 
-  revalidatePath("/admin");
+  revalidatePath("/admin/organization");
 }

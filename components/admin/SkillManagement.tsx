@@ -1,4 +1,4 @@
-import { createSkillTag, grantSkill, revokeSkill } from "@/app/(app)/admin/actions";
+import { createSkillTag, grantSkill, revokeSkill } from "@/app/(app)/admin/organization/actions";
 
 type Member = { id: string; name: string; skillIds: string[] };
 type SkillTag = { id: string; name: string };
