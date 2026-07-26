@@ -4,13 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 import { createTask, deleteTask } from "./actions";
-
-const REPEAT_LABELS: Record<string, string> = {
-  daily: "매일",
-  weekly: "매주",
-  monthly: "매월",
-};
 
 function getTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -37,15 +32,19 @@ export default async function AdminTasksPage({
 
   const isMobile = isMobileUserAgent(headers().get("user-agent"));
   const from = searchParams.from ?? getTodayDateString();
+  const today = getTodayDateString();
+
+  function fromHref(d: string): string {
+    return `/admin/tasks?from=${d}`;
+  }
 
   const [tasksRes, skillTagsRes, requiredSkillsRes] = await Promise.all([
     supabase
       .from("tasks")
-      .select("id, title, description, date, start_time, end_time, required_headcount, repeat_type")
+      .select("id, title, description, date, required_headcount")
       .eq("team_id", teamId)
       .gte("date", from)
-      .order("date")
-      .order("start_time"),
+      .order("date"),
     supabase.from("skill_tags").select("id, name").eq("team_id", teamId).order("name"),
     supabase.from("task_skills").select("task_id, skill_tag_id"),
   ]);
@@ -68,25 +67,15 @@ export default async function AdminTasksPage({
         <p className="rounded bg-red-50 p-2 text-sm text-red-700">{searchParams.error}</p>
       )}
 
-      <form className="flex items-end gap-3" method="get">
-        <label className="flex flex-col text-sm">
-          기준일(이후)
-          <input type="date" name="from" defaultValue={from} className="rounded border px-2 py-1" />
-        </label>
-        <button type="submit" className="rounded bg-black px-3 py-2 text-sm text-white">
-          조회
-        </button>
-      </form>
+      <DatePickerField selectedDate={from} today={today} hrefFor={fromHref} />
 
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr className="border-b text-left">
             <th className="py-2">날짜</th>
-            <th className="py-2">시간</th>
             <th className="py-2">과업명</th>
             <th className="py-2">요구인원</th>
             <th className="py-2">필수 스킬</th>
-            <th className="py-2">반복</th>
             {!isMobile && <th className="py-2" />}
           </tr>
         </thead>
@@ -94,9 +83,6 @@ export default async function AdminTasksPage({
           {tasks.map((t) => (
             <tr key={t.id} className="border-b align-top">
               <td className="py-2">{t.date}</td>
-              <td className="py-2">
-                {t.start_time?.slice(0, 5)}~{t.end_time?.slice(0, 5)}
-              </td>
               <td className="py-2">
                 <p className="font-medium">{t.title}</p>
                 {t.description && <p className="text-xs text-gray-500">{t.description}</p>}
@@ -108,7 +94,6 @@ export default async function AdminTasksPage({
                   .filter(Boolean)
                   .join(", ") || "-"}
               </td>
-              <td className="py-2">{t.repeat_type ? (REPEAT_LABELS[t.repeat_type] ?? t.repeat_type) : "없음"}</td>
               {!isMobile && (
                 <td className="py-2">
                   <form action={deleteTask}>
@@ -123,7 +108,7 @@ export default async function AdminTasksPage({
           ))}
           {tasks.length === 0 && (
             <tr>
-              <td colSpan={isMobile ? 6 : 7} className="py-4 text-center text-gray-500">
+              <td colSpan={isMobile ? 3 : 4} className="py-4 text-center text-gray-500">
                 등록된 과업이 없습니다.
               </td>
             </tr>
@@ -166,17 +151,6 @@ function TaskForm({ skillTags }: { skillTags: { id: string; name: string }[] }) 
           <input type="date" name="date" required className="rounded border px-2 py-1" />
         </label>
         <label className="flex flex-col text-sm">
-          시작 시각
-          <input type="time" name="startTime" required className="rounded border px-2 py-1" />
-        </label>
-        <label className="flex flex-col text-sm">
-          종료 시각
-          <input type="time" name="endTime" required className="rounded border px-2 py-1" />
-        </label>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <label className="flex flex-col text-sm">
           요구 인원수
           <input
             type="number"
@@ -186,15 +160,6 @@ function TaskForm({ skillTags }: { skillTags: { id: string; name: string }[] }) 
             required
             className="w-24 rounded border px-2 py-1"
           />
-        </label>
-        <label className="flex flex-col text-sm">
-          반복 주기
-          <select name="repeatType" defaultValue="none" className="rounded border px-2 py-1">
-            <option value="none">없음</option>
-            <option value="daily">매일 (2주간)</option>
-            <option value="weekly">매주 (8주간)</option>
-            <option value="monthly">매월 (6개월간)</option>
-          </select>
         </label>
       </div>
 

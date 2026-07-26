@@ -57,6 +57,12 @@ export default async function OrganizationPage({
 
       <section className="flex flex-col gap-3">
         <h2 className="font-medium">가입 승인 대기</h2>
+        {pendingRes.error && (
+          <p className="rounded bg-red-50 p-2 text-sm text-red-700">
+            승인 대기 목록을 불러오지 못했습니다: {pendingRes.error.message}
+            {" "}(supabase/pending_members_email_rpc.sql이 Supabase에 적용됐는지 확인해주세요.)
+          </p>
+        )}
         <div className="flex flex-col gap-3">
           {pendingMembers.map((m) => (
             <div

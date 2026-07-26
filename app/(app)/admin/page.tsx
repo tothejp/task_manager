@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { getCurrentMonth, getAdjacentMonth } from "@/lib/date";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
-import { DateFilterCalendar } from "@/components/admin/DateFilterCalendar";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 
 type AvailabilityStatus = "available" | "vacation" | "dayoff";
 
@@ -22,7 +22,7 @@ function getTodayDateString(): string {
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: { date?: string; month?: string; calMonth?: string };
+  searchParams: { date?: string; month?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -39,20 +39,11 @@ export default async function AdminDashboardPage({
 
   const date = searchParams.date ?? getTodayDateString();
   const month = searchParams.month ?? getCurrentMonth();
-  const calMonth = searchParams.calMonth ?? date.slice(0, 7);
   const today = getTodayDateString();
 
   function dateHref(d: string): string {
     const p = new URLSearchParams();
     p.set("date", d);
-    if (searchParams.month) p.set("month", searchParams.month);
-    return `/admin?${p.toString()}`;
-  }
-
-  function calMonthHref(m: string): string {
-    const p = new URLSearchParams();
-    p.set("date", date);
-    p.set("calMonth", m);
     if (searchParams.month) p.set("month", searchParams.month);
     return `/admin?${p.toString()}`;
   }
@@ -160,16 +151,7 @@ export default async function AdminDashboardPage({
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <h1 className="text-2xl font-semibold text-gray-900">중대 현황판</h1>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <DateFilterCalendar
-          calMonth={calMonth}
-          selectedDate={date}
-          today={today}
-          dateHref={dateHref}
-          prevMonthHref={calMonthHref(getAdjacentMonth(calMonth, -1))}
-          nextMonthHref={calMonthHref(getAdjacentMonth(calMonth, 1))}
-        />
-      </div>
+      <DatePickerField selectedDate={date} today={today} hrefFor={dateHref} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <SummaryCard label="전체 인원" value={`${roster.length}명`} />

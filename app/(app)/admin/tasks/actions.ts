@@ -5,17 +5,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
-import {
-  enumerateDailyOccurrences,
-  enumerateWeeklyOccurrences,
-  enumerateMonthlyOccurrences,
-} from "@/lib/date";
 
-const DAILY_REPEAT_OCCURRENCES = 14;
-const WEEKLY_REPEAT_OCCURRENCES = 8;
-const MONTHLY_REPEAT_OCCURRENCES = 6;
-
-type RepeatType = "none" | "daily" | "weekly" | "monthly";
+// 과업은 시간 단위가 아닌 날짜 단위로만 관리한다 (관리자 요청). DB 컬럼은 not null이라
+// 하루 전체를 뜻하는 고정값을 채워 넣는다.
+const FULL_DAY_START = "00:00";
+const FULL_DAY_END = "23:59";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -34,69 +28,44 @@ async function requireAdmin() {
   return { supabase, member: { ...member, team_id: teamId } };
 }
 
-function datesForRepeat(date: string, repeatType: RepeatType): string[] {
-  switch (repeatType) {
-    case "daily":
-      return enumerateDailyOccurrences(date, DAILY_REPEAT_OCCURRENCES);
-    case "weekly":
-      return enumerateWeeklyOccurrences(date, WEEKLY_REPEAT_OCCURRENCES);
-    case "monthly":
-      return enumerateMonthlyOccurrences(date, MONTHLY_REPEAT_OCCURRENCES);
-    default:
-      return [date];
-  }
-}
-
 export async function createTask(formData: FormData) {
   const { supabase, member } = await requireAdmin();
 
   const title = formData.get("title") as string;
   const description = (formData.get("description") as string) || null;
   const date = formData.get("date") as string;
-  const startTime = formData.get("startTime") as string;
-  const endTime = formData.get("endTime") as string;
   const requiredHeadcount = Number(formData.get("requiredHeadcount"));
-  const repeatType = ((formData.get("repeatType") as string) || "none") as RepeatType;
   const requiredSkillIds = formData.getAll("requiredSkillIds") as string[];
 
-  if (endTime <= startTime) {
-    redirect(`/admin/tasks?error=${encodeURIComponent("종료 시각은 시작 시각보다 늦어야 합니다.")}`);
+  const { data: task, error } = await supabase
+    .from("tasks")
+    .insert({
+      team_id: member.team_id,
+      title,
+      description,
+      date,
+      start_time: FULL_DAY_START,
+      end_time: FULL_DAY_END,
+      required_headcount: requiredHeadcount,
+    })
+    .select("id")
+    .single();
+
+  if (error || !task) {
+    redirect(
+      `/admin/tasks?error=${encodeURIComponent(error?.message ?? "과업 생성에 실패했습니다.")}`
+    );
   }
 
-  const dates = datesForRepeat(date, repeatType);
+  if (requiredSkillIds.length > 0) {
+    const rows = requiredSkillIds.map((skillTagId) => ({
+      task_id: task.id,
+      skill_tag_id: skillTagId,
+    }));
+    const { error: skillError } = await supabase.from("task_skills").insert(rows);
 
-  for (const d of dates) {
-    const { data: task, error } = await supabase
-      .from("tasks")
-      .insert({
-        team_id: member.team_id,
-        title,
-        description,
-        date: d,
-        start_time: startTime,
-        end_time: endTime,
-        required_headcount: requiredHeadcount,
-        repeat_type: repeatType === "none" ? null : repeatType,
-      })
-      .select("id")
-      .single();
-
-    if (error || !task) {
-      redirect(
-        `/admin/tasks?error=${encodeURIComponent(error?.message ?? "과업 생성에 실패했습니다.")}`
-      );
-    }
-
-    if (requiredSkillIds.length > 0) {
-      const rows = requiredSkillIds.map((skillTagId) => ({
-        task_id: task.id,
-        skill_tag_id: skillTagId,
-      }));
-      const { error: skillError } = await supabase.from("task_skills").insert(rows);
-
-      if (skillError) {
-        redirect(`/admin/tasks?error=${encodeURIComponent(skillError.message)}`);
-      }
+    if (skillError) {
+      redirect(`/admin/tasks?error=${encodeURIComponent(skillError.message)}`);
     }
   }
 

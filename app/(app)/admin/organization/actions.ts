@@ -59,7 +59,9 @@ export async function createSkillTag(formData: FormData) {
     .insert({ team_id: member.team_id, name: skillName });
 
   if (error) {
-    redirect(`/admin/organization?error=${encodeURIComponent(error.message)}`);
+    const message =
+      error.code === "23505" ? `이미 등록된 스킬 태그입니다: ${skillName}` : error.message;
+    redirect(`/admin/organization?error=${encodeURIComponent(message)}`);
   }
 
   revalidatePath("/admin/organization");

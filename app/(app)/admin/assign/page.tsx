@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
+import { DatePickerField } from "@/components/ui/DatePickerField";
 import { AssignmentBoard, type MemberCard, type TaskSlot } from "@/components/admin/AssignmentBoard";
 
 function getTodayDateString(): string {
@@ -30,6 +31,11 @@ export default async function AdminAssignPage({
   const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
 
   const date = searchParams.date ?? getTodayDateString();
+  const today = getTodayDateString();
+
+  function dateHref(d: string): string {
+    return `/admin/assign?date=${d}`;
+  }
 
   const [membersRes, availRes, skillTagsRes, memberSkillsRes, tasksRes, requiredSkillsRes] =
     await Promise.all([
@@ -155,15 +161,7 @@ export default async function AdminAssignPage({
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-6">
       <h1 className="text-2xl font-semibold text-gray-900">과업 배정</h1>
 
-      <form method="get" className="flex items-end gap-3">
-        <label className="flex flex-col text-sm">
-          날짜
-          <input type="date" name="date" defaultValue={date} className="rounded border px-2 py-1" />
-        </label>
-        <button type="submit" className="rounded bg-black px-3 py-2 text-sm text-white">
-          조회
-        </button>
-      </form>
+      <DatePickerField selectedDate={date} today={today} hrefFor={dateHref} />
 
       {isMobile ? (
         <ReadOnlyAssignmentList
