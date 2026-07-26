@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
-import { ADMIN_NAV_ITEMS, MEMBER_NAV_ITEMS, BRAND_ICON } from "./nav-items";
+import { ADMIN_NAV_ITEMS, MEMBER_NAV_ITEMS } from "./nav-items";
 import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
 
 export function Sidebar({
@@ -23,14 +23,12 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const items = role === "admin" ? ADMIN_NAV_ITEMS : MEMBER_NAV_ITEMS;
-  const BrandIcon = BRAND_ICON;
 
   return (
     <aside className="flex w-16 shrink-0 flex-col border-r border-gray-200 bg-white md:w-60">
       <Link href="/dashboard" className="flex items-center gap-2 px-3 py-5 md:px-5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600">
-          <BrandIcon className="h-4 w-4 text-white" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/task-manager-icon.png" alt="" className="h-8 w-8 shrink-0" />
         <span className="hidden text-base font-bold text-gray-900 md:inline">Task Manager</span>
       </Link>
 

@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
-import { getCurrentMonth, getAdjacentMonth } from "@/lib/date";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { DatePickerField } from "@/components/ui/DatePickerField";
 
@@ -22,7 +20,7 @@ function getTodayDateString(): string {
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: { date?: string; month?: string };
+  searchParams: { date?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -38,20 +36,14 @@ export default async function AdminDashboardPage({
   const teamId = await resolveEffectiveTeamId(member, isSuperadmin);
 
   const date = searchParams.date ?? getTodayDateString();
-  const month = searchParams.month ?? getCurrentMonth();
   const today = getTodayDateString();
 
   function dateHref(d: string): string {
-    const p = new URLSearchParams();
-    p.set("date", d);
-    if (searchParams.month) p.set("month", searchParams.month);
-    return `/admin?${p.toString()}`;
+    return `/admin?date=${d}`;
   }
 
-  const [membersRes, skillTagsRes, memberSkillsRes, availabilityRes] = await Promise.all([
+  const [membersRes, availabilityRes] = await Promise.all([
     supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
-    supabase.from("skill_tags").select("id, name").eq("team_id", teamId).order("name"),
-    supabase.from("member_skills").select("member_id, skill_tag_id"),
     supabase.from("availabilities").select("member_id, status").eq("start_date", date),
   ]);
 
@@ -92,60 +84,20 @@ export default async function AdminDashboardPage({
     .filter((x): x is NonNullable<typeof x> => x !== null)
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // 완료율: 선택된 월의 배정(공백 제외) 중 완료 비율 (PRD 3.8)
-  const periodTasksRes = await supabase
-    .from("tasks")
-    .select("id")
-    .eq("team_id", teamId)
-    .gte("date", `${month}-01`)
-    .lte("date", `${month}-31`);
-
-  const periodTaskIds = (periodTasksRes.data ?? []).map((t) => t.id);
-
-  const periodAssignmentsRes =
-    periodTaskIds.length > 0
-      ? await supabase
-          .from("assignments")
-          .select("status")
-          .in("task_id", periodTaskIds)
-          .neq("status", "vacant")
-      : { data: [] as { status: string }[] };
-
-  const totalForRate = periodAssignmentsRes.data?.length ?? 0;
-  const completedForRate = (periodAssignmentsRes.data ?? []).filter(
-    (a) => a.status === "completed"
-  ).length;
-  const completionRate = totalForRate > 0 ? Math.round((completedForRate / totalForRate) * 100) : 0;
-
   const members = membersRes.data ?? [];
-  const skillTags = skillTagsRes.data ?? [];
 
   const statusByMember = new Map(
     (availabilityRes.data ?? []).map((a) => [a.member_id as string, a.status as AvailabilityStatus])
   );
-
-  const skillsByMember = new Map<string, string[]>();
-  for (const ms of memberSkillsRes.data ?? []) {
-    const list = skillsByMember.get(ms.member_id) ?? [];
-    list.push(ms.skill_tag_id);
-    skillsByMember.set(ms.member_id, list);
-  }
 
   // 일정 미등록 시 기본값은 "가용" (PRD 3.3: 부재만 명시적으로 등록하는 방식 전제)
   const roster = members.map((m) => ({
     id: m.id,
     name: m.name,
     status: statusByMember.get(m.id) ?? ("available" as AvailabilityStatus),
-    skillIds: skillsByMember.get(m.id) ?? [],
   }));
 
   const availableCount = roster.filter((m) => m.status === "available").length;
-
-  const skillSummaries = skillTags.map((tag) => {
-    const holders = roster.filter((m) => m.skillIds.includes(tag.id));
-    const availableHolders = holders.filter((m) => m.status === "available");
-    return { ...tag, holderCount: holders.length, availableCount: availableHolders.length };
-  });
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
@@ -156,13 +108,6 @@ export default async function AdminDashboardPage({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <SummaryCard label="전체 인원" value={`${roster.length}명`} />
         <SummaryCard label="가용 인원" value={`${availableCount}명`} />
-        {skillSummaries.map((s) => (
-          <SummaryCard
-            key={s.id}
-            label={s.name}
-            value={`가용 ${s.availableCount} / 보유 ${s.holderCount}명`}
-          />
-        ))}
       </div>
 
       <table className="w-full border-collapse text-sm">
@@ -170,7 +115,6 @@ export default async function AdminDashboardPage({
           <tr className="border-b text-left">
             <th className="py-2">이름</th>
             <th className="py-2">상태</th>
-            <th className="py-2">보유 스킬</th>
           </tr>
         </thead>
         <tbody>
@@ -178,17 +122,11 @@ export default async function AdminDashboardPage({
             <tr key={m.id} className="border-b">
               <td className="py-2">{m.name}</td>
               <td className="py-2">{STATUS_LABELS[m.status]}</td>
-              <td className="py-2">
-                {m.skillIds
-                  .map((id) => skillTags.find((t) => t.id === id)?.name)
-                  .filter(Boolean)
-                  .join(", ") || "-"}
-              </td>
             </tr>
           ))}
           {roster.length === 0 && (
             <tr>
-              <td colSpan={3} className="py-4 text-center text-gray-500">
+              <td colSpan={2} className="py-4 text-center text-gray-500">
                 해당 조건의 인원이 없습니다.
               </td>
             </tr>
@@ -207,18 +145,6 @@ export default async function AdminDashboardPage({
             </p>
           ))
         )}
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h2 className="font-medium">완료율</h2>
-          <div className="flex items-center gap-2 text-sm">
-            <Link href={`/admin?month=${getAdjacentMonth(month, -1)}`}>‹</Link>
-            <span>{month}</span>
-            <Link href={`/admin?month=${getAdjacentMonth(month, 1)}`}>›</Link>
-          </div>
-        </div>
-        <SummaryCard label={`${month} 완료율`} value={`${completionRate}%`} />
       </section>
     </main>
   );

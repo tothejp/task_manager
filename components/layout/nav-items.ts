@@ -23,6 +23,3 @@ export const MEMBER_NAV_ITEMS: NavItem[] = [
   { href: "/schedule", label: "내 일정", icon: CalendarDays },
   { href: "/my-tasks", label: "내 임무", icon: ListChecks },
 ];
-
-// 로그인 화면 + 사이드바 상단에 공용으로 쓰는 브랜드 아이콘
-export const BRAND_ICON = ListChecks;
