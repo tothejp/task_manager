@@ -1,12 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DeviceGuard from '@/components/DeviceGuard'
-import { getCurrentMember } from '@/lib/get-current-member'
+import { getAuthUser, getCurrentMember } from '@/lib/get-current-member'
 import { AppShell } from '@/components/layout/AppShell'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
   if (!user) redirect('/login')
 
   const member = await getCurrentMember()

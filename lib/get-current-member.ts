@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type CurrentMember = {
@@ -9,14 +10,22 @@ export type CurrentMember = {
   teams: { name: string } | null;
 };
 
-export async function getCurrentMember(): Promise<CurrentMember | null> {
+// 같은 요청(렌더 1회) 안에서 여러 곳(레이아웃, getCurrentMember 등)이 불러도
+// 실제 Supabase Auth 호출은 한 번만 나가도록 React cache로 묶는다.
+export const getAuthUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  return user;
+});
+
+export async function getCurrentMember(): Promise<CurrentMember | null> {
+  const user = await getAuthUser();
 
   if (!user) return null;
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("members")
     .select("id, team_id, role, status, name, teams(name)")

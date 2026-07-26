@@ -10,9 +10,11 @@ export async function AppShell({
   children: React.ReactNode;
 }) {
   const isSuperadmin = member.role === "admin" ? await checkIsSuperadmin() : false;
-  const activeTeamId =
-    member.role === "admin" ? await resolveEffectiveTeamId(member, isSuperadmin) : member.team_id;
-  const teams = isSuperadmin ? await listAllTeamsForSuperadmin() : [];
+
+  const [activeTeamId, teams] = await Promise.all([
+    member.role === "admin" ? resolveEffectiveTeamId(member, isSuperadmin) : Promise.resolve(member.team_id),
+    isSuperadmin ? listAllTeamsForSuperadmin() : Promise.resolve([]),
+  ]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
