@@ -1,119 +1,111 @@
 # CURRENT_STATUS.md — 임무분담표(TaskShare, UI상 "Task Manager") 진행 상황
 
-마지막 업데이트: 2026-07-22
+마지막 업데이트: 2026-07-26
 
-## 현재 단계: 기능 구현 + UI 리디자인 코드는 전부 완료, DB 스크립트 2개 미실행 + 실사용 검증 남음
+## 현재 단계: 핵심 기능 + UI 개편 대부분 완료, DB 마이그레이션 1건 실행 대기 중(계급 기능이 이것 때문에 막혀 있음)
+
+---
+
+## ⚠️ 지금 당장 필요한 작업
+- **`supabase/add_member_rank.sql` 미실행.** 이게 없으면 `getCurrentMember()`(모든 인증 페이지에서 호출)가 실패해서 로그인한 모든 사용자 화면이 막힌다. 최우선으로 Supabase SQL Editor에서 실행할 것.
+  - 컬럼명을 `rank`로 만들면 PostgreSQL의 순서집합 집계함수 `rank()`와 충돌해 파싱 에러가 나므로, 실제 DB 컬럼/타입명은 `member_rank`/`member_rank_enum`이고 앱 코드에서는 `select`할 때 `rank:member_rank` 별칭을 써서 JS 쪽 필드명은 `rank`로 유지한다.
 
 ---
 
 ## 완료된 작업
 
-### 기능 구현 (1~9단계)
+### 기능 구현
 - [x] PRD v0.5 확정 (`task_manager_PRD.md`)
-- [x] Prisma 스키마 작성 (`prisma/schema.prisma`) — 소문자 enum, start_date/end_date, task_skills, assignments date 컬럼 없음
-- [x] Supabase 클라이언트 초기화 (`lib/supabase/client.ts`, `server.ts`, `middleware.ts`)
-- [x] RLS 정책 SQL (`supabase/rls_policies.sql`) — 팀 단위 격리, 관리자/팀원 권한 분리
-- [x] 인증 페이지 — `/login`, `/signup`, `/auth/callback`
-- [x] 팀 합류 — `/onboarding`에서 관리자가 미리 만들어둔 팀 목록(드롭다운, `list_teams_for_onboarding` RPC) 중 선택 + 이름 입력으로 신청. **`/join`(초대코드), `/team/new`(팀 생성)는 완전히 제거됨** — 팀 생성은 이제 관리자만 SQL로 수행
-- [x] 팀원 일정 입력 — `/schedule`, 월간 캘린더, 가용/휴가/휴무 등록
-- [x] 관리자 대시보드 — `/admin`, 가용인원 현황, 스킬 태그 관리
-- [x] 과업 관리 — `/admin/tasks`, 반복 과업 생성/삭제
-- [x] D&D 배정 화면 — `/admin/assign`, 시간 중복 차단, 스킬 경고 모달
-- [x] 자동배정 — 순수 함수 `recommendAssignments()`, 미리보기→확정 플로우
-- [x] 휴가→재배정 (PRD 3.7) — `schedule/actions.ts`에서 휴가 등록 시 `apply_vacation_gaps` RPC 호출, `/admin/assign`에 공백 알림 표시 후 기존 자동배정으로 재배정
-- [x] 완료 체크 (PRD 3.8) — `/my-tasks`(팀원/모바일)에서 `mark_assignment_completed` RPC 호출, `/admin`에 미완료 과업 강조 및 월별 완료율 표시
-- [x] 공정성 지표 시각화 (PRD 3.9) — `/admin/fairness`, 구성원별 누적 배정 막대그래프, 평균 대비 ±20% 편차 경고 (`FAIRNESS_DEVIATION_THRESHOLD` 상수)
-- [x] 가입 승인제 (이메일 인증 대체) — 팀 합류 신청자는 `members.status='pending'`으로 등록, `/pending` 대기 화면 표시, 관리자가 `/admin/members`에서 승인/거부. DB 변경은 `supabase/member_approval.sql`을 Supabase에서 직접 실행 필요 (아래 "진행 중인 작업" 참고)
-- [x] 슈퍼관리자 + 팀 전환 (tothejp 전용) — `members.user_id`가 전역 UNIQUE라 한 계정이 여러 팀의 정식 멤버가 될 수 없는 제약을 우회하기 위해 도입. `public.superadmins` 테이블 + `is_superadmin()` RLS 헬퍼로 모든 팀 데이터 접근 허용, 사이드바 하단의 `TeamSwitcher`(쿠키 `active_team_id`)로 조회/조작 대상 팀 전환. `lib/team-context.ts`가 핵심 로직(`resolveEffectiveTeamId`)이고, 5개 관리자 페이지 + 4개 관리자 액션 파일의 `requireAdmin()`이 이를 통해 `member.team_id`를 해석된 팀으로 치환. DB 변경은 `supabase/superadmin.sql` 실행 필요. 초기 팀 3개(지원중대/운용중대/본부중대)도 이 스크립트가 생성하고 tothejp을 본부중대 admin + 슈퍼관리자로 등록함
-- [x] UI 리디자인 — 앱 이름 "임무분담표"→"Task Manager"로 변경(탭 타이틀, 로그인 화면 로고형 브랜딩), 좌측 사이드바 도입(`components/layout/AppShell.tsx`+`Sidebar.tsx`, 관리자/팀원 화면 전체, `lucide-react` 아이콘), 각 페이지 헤더의 개별 nav-link 행 제거(사이드바로 통합), 관리자 대시보드 날짜 필터를 네이티브 input에서 캘린더 그리드(`components/admin/DateFilterCalendar.tsx`)로 교체, `/dashboard`를 nav-card 화면에서 순수 리다이렉트 라우터로 전환(로그인 직후 관리자→`/admin`, 팀원→`/schedule` 바로 이동), Geist 폰트를 body에 실제 적용. `TeamSwitcher`의 서버 액션(`setActiveTeam`)은 클라이언트 컴포넌트(`Sidebar.tsx`)에서 끌어쓰다 보니 `next/headers` 의존 코드가 클라이언트 번들에 섞여 빌드가 깨졌던 문제가 있어, `lib/team-switch-action.ts`로 액션만 분리해서 해결함
+- [x] Prisma 스키마 (`prisma/schema.prisma`) — 스키마 문서/마이그레이션 참고용, 런타임 쿼리는 Supabase 클라이언트 전용
+- [x] 인증 — `/login`, `/signup`, 가입 승인제(이메일 인증 대신 관리자 승인, `members.status`)
+- [x] 팀 합류 — `/onboarding`에서 관리자가 미리 만든 팀 중 선택 + 이름 입력으로 신청(`list_teams_for_onboarding` RPC). 팀 생성/초대코드 합류 UI는 없음 — 팀은 관리자가 SQL로만 생성
+- [x] 팀원 일정 입력 — `/schedule`
+- [x] 팀원 임무 확인/완료 체크 — `/my-tasks`, `mark_assignment_completed` RPC
+- [x] **중대 현황판 — `/admin`**: 가용인원 현황(전체/가용 인원, 이름/상태 테이블) + 미완료 과업 강조 + **과업 배정(Drag & Drop)까지 이 페이지 하나로 통합**. 완료율 섹션과 스킬 요약 카드는 사용자 요청으로 제거됨. 날짜 선택은 공용 `DatePickerField`(클릭 시 모달로 월 달력) 사용
+- [x] 과업 관리 — `/admin/tasks`: 생성/**수정**(모달 폼)/삭제. 시간 단위 관리는 제거하고 날짜 단위로만 관리(내부적으로 `start_time=00:00`/`end_time=23:59` 고정값 사용 — 같은 날 여러 과업에 한 명을 배정할 수 없는 트레이드오프 있음, 확인 후 진행)
+- [x] D&D 과업 배정 — 기존 `/admin/assign` 페이지는 삭제되고 `/admin`(중대 현황판)에 통합됨. 사이드바에서 "과업 배정" 메뉴도 제거. 시간 중복 하드 차단, 필수 스킬 미보유는 경고 모달(하드 차단 아님) + `skill_override` 기록
+- [x] 자동배정 — 순수 함수 `recommendAssignments()`, 미리보기→확정 플로우 (중대 현황판 내 배정 보드에 포함)
+- [x] 휴가→재배정 (PRD 3.7) — 휴가 등록 시 `apply_vacation_gaps` RPC, 배정 보드에 공백 알림 표시
+- [x] 공정성 지표 — `/admin/fairness`, 구성원별 누적 배정 막대그래프, 평균 대비 ±20% 편차 경고. **사이드바 메뉴 맨 아래로 이동, 추가 기능 개선은 보류 중**
+- [x] **조직원 관리 — `/admin/organization`** (구 "팀원 승인" 탭 대체): 세 영역으로 구성
+  1. 가입 승인 대기 — 별도 카드(주황 배경)로 분리, 신청자 이름/계정(이메일)/신청 소속 표시(`list_pending_members_for_team` RPC로 auth.users 이메일 조회)
+  2. 조직원 목록 — 이름 + **계급(이병/일병/상병/병장) 선택 드롭다운**(`MemberRankSelect`, 위 "지금 당장 필요한 작업" 참고)
+  3. 스킬 태그 관리 — 태그 생성 + **Drag & Drop으로 조직원에게 부여**(스킬 칩을 조직원 위로 드래그), 배지 클릭으로 회수
+- [x] 슈퍼관리자 + 팀 전환 (tothejp 전용) — `public.superadmins` + `is_superadmin()`, 사이드바 `TeamSwitcher`(쿠키 `active_team_id`), `lib/team-context.ts`의 `resolveEffectiveTeamId()`가 핵심
+- [x] 로그인/회원가입 UI — 로고+텍스트가 합쳐진 이미지(`public/task-manager-logo.png`)를 헤더로 사용, 로고 색에서 뽑은 `brand` 팔레트(`tailwind.config.ts`)로 버튼/링크/포커스링 통일. 모바일에서 입력 글씨가 회색으로 보이던 문제 수정(`text-gray-900` 명시)
+- [x] 사이드바/파비콘 — 로고에서 분리 추출한 방패 아이콘(`public/task-manager-icon.png`, `app/icon.png`) 적용. 사이드바 로고 클릭 시 `/dashboard`로 이동, 팀/이름 표시를 상단으로 옮기고 `/me`(내 정보 페이지)로 연결
+- [x] 전역 스타일 — Drag & Drop 조작이 많아 `tailwind.config.ts`의 `rounded-*`/`text-*` 스케일을 한 단계씩 키움
+- [x] `DatePickerField`(`components/ui/DatePickerField.tsx`) — 평소엔 선택 날짜만 보이고 클릭 시 **모달**로 월 달력이 뜨는 공용 컴포넌트. 중대 현황판/과업 관리에서 사용. **주의**: 클라이언트 컴포넌트라 서버 컴포넌트에서 만든 함수를 prop으로 넘기면 안 됨(직렬화 불가 → 렌더링 중 서버 예외) — `basePath`/`paramName` 문자열만 넘기고 href는 컴포넌트 내부에서 조립
 - [x] 공통 유틸 — `isTimeOverlapping()`, `lib/date.ts`, `lib/device.ts`, `lib/auto-assign.ts`
+- [x] 테스트 계정 12개 생성 (Supabase Admin API로 직접 생성, 전부 비밀번호 `123456`): `master1/2/3@gmail.com`(각 본부/지원/운용중대 관리자), `test1~9@gmail.com`(팀별 3명씩 팀원). 과업도 세 팀에 각 10개씩(총 30개) 시드됨
 
 ### 운영 배포
-- [x] Vercel 배포 완료 — https://task-manager-rosy-theta.vercel.app
-- [x] Supabase DB 테이블 생성 완료 (프로젝트: ewlktlbykhibiiqyxdor)
-- [x] RLS 정책 및 SECURITY DEFINER 함수 Supabase에 적용 완료
-- [x] Supabase Auth URL Configuration 설정 완료
-- [x] Vercel 환경변수 설정 중 (DATABASE_URL, DIRECT_URL 입력 진행 중)
-
-### 주요 버그 수정 이력
-- tsconfig.json `@/*` 경로가 `./src/*`로 잘못 설정되어 있던 것 수정 (→ `./*`)
-- git rebase로 병합된 claude/ 프로젝트 `src/` 디렉터리 삭제
-- Prisma 스키마가 old 버전(대문자 enum, task_required_skills 등)으로 덮어씌워진 것 수정
-- RLS 정책의 대문자 enum 값(`'ADMIN'`, `'ASSIGNED'` 등) 소문자로 수정
-- `apply_vacation_gaps` RPC: assignments.date 컬럼 없으므로 tasks 조인으로 수정
-- `lib/supabase/middleware.ts` 누락 파일 생성
-- `DeviceGuard.tsx` 관리자 경로 체크가 실제 라우트(`/admin/tasks`, `/admin/assign`)와 매칭되지 않던 것 수정
-- `tailwind.config.ts`의 `content`가 존재하지 않는 `./src/app`, `./src/components`를 가리키고 있어 Tailwind가 사용 중인 클래스를 하나도 못 찾고 있던 것 수정 (→ `./app`, `./components`). 이 때문에 운영 사이트가 스타일 없이 텍스트로만 렌더링되고 있었음 — 이전에 "빌드에는 영향 없음"이라 기록했던 "No utility classes detected" 경고가 실제로는 이 심각한 버그의 증상이었음
-- **[심각] `teams`/`members`/`skill_tags`/`tasks`/`assignments`/`availabilities` 테이블 전부 `id` 컬럼에 DB 기본값이 없었음** (`teams`/`members`는 `updated_at`도 없음). 앱 코드는 Prisma의 `@default(uuid())`/`@updatedAt`을 믿고 `id`/`updated_at`을 아예 안 넣고 insert해왔는데, 이 프로젝트는 Prisma Client를 안 쓰고 Supabase 클라이언트로만 쓰기 때문에 DB 레벨 기본값이 실제로 있어야 했음 — 스키마 생성 시 누락된 것으로 보임(같은 Supabase 프로젝트를 공유하는 BookLog 쪽 테이블들은 전부 `gen_random_uuid()` 기본값이 정상적으로 있어서 대조됨). 즉 팀 생성뿐 아니라 과업 생성/스킬 태그 생성/배정/일정 입력 등 **앱의 거의 모든 insert가 이 문제로 실패하고 있었을 가능성이 높음**. `supabase/fix_missing_defaults.sql`로 각 테이블에 `default gen_random_uuid()`/`default now()` 추가해서 해결(앱 코드는 그대로 두고 DB 기본값만 채움 — 코드 변경 불필요)
-- Supabase Auth "Enable Email provider" 설정이 꺼져있어 신규 회원가입이 전부 "Email signups are disabled"로 실패하던 것 발견 → 사용자가 대시보드에서 직접 켬
-- `teams`/`members` 테이블에 RLS는 켜져 있는데 INSERT 정책이 없어서 팀 생성/합류가 42501 에러로 막히던 것 발견 → `supabase/team_member_insert_policies.sql` 추가
-- 팀 생성 시 `.insert().select().single()`이 RETURNING 과정에서 `teams_select_own_team` SELECT 정책(본인이 이미 그 팀 members여야 함)과 충돌해 실패하던 근본 원인 발견 및 수정(`app/(app)/team/new/actions.ts`) — 이후 팀 생성 자체를 관리자 전용 SQL로 옮기면서 이 페이지는 삭제됨
+- [x] Vercel — https://task-manager-rosy-theta.vercel.app (GitHub main 브랜치 자동 배포)
+- [x] Supabase 프로젝트: `ewlktlbykhibiiqyxdor`
 
 ---
 
-## 진행 중인 작업
-- Vercel 환경변수 최종 설정 및 Redeploy 확인
-- 가입 승인제 DB 반영 완료: `supabase/member_approval.sql` 실행 + Supabase "Confirm email" 비활성화 모두 적용됨.
-- **`supabase/fix_missing_defaults.sql` 실행 필요 (미완료, 사용자 직접 작업 필요, `superadmin.sql`보다 먼저)** — teams/members/skill_tags/tasks/assignments/availabilities id 기본값 누락 수정. 이거 없이는 superadmin.sql의 팀 생성도, 앱의 다른 insert(과업/스킬/배정/일정)도 계속 실패한다.
-- **`supabase/superadmin.sql` 실행 필요 (미완료, 사용자 직접 작업 필요)** — 슈퍼관리자 테이블/RPC, 온보딩용 팀 목록 RPC, 팀 전환을 위한 RLS 예외, 초기 팀 3개(지원중대/운용중대/본부중대) 생성이 이 스크립트 하나에 들어있음. 실행 전까지는 `/onboarding` 드롭다운이 비어있고 `/admin` 계열 페이지에서 팀 전환이 동작하지 않는다.
-- 회원가입 관련 디버그 에러 메시지가 `app/(auth)/signup/actions.ts`에 임시로 남아있음(사용자 요청으로 유지 중) — 나중에 정리 필요하면 알려줄 것.
-- 로그아웃 405 에러 원인 미확인 — 로컬 재현 시 코드 자체는 정상(POST→307). 사용자가 브라우저 Network 탭에서 실제 요청 Method를 확인해주기로 함. 로그아웃 버튼은 이제 사이드바 하단으로 이동(같은 `<form method="POST">` 패턴 재사용).
-- UI 리디자인(사이드바/캘린더 날짜선택/브랜딩)은 로컬에서 로그인 화면까지만 시각 확인함(Supabase 자격증명 없어 로그인 이후 화면은 미확인) — Vercel 배포 후 사이드바(관리자 5개 항목/팀원 2개 항목), 팀 전환 드롭다운, 관리자 대시보드 캘린더 날짜 선택 실사용 확인 필요.
+## 알려진 트레이드오프/제약
+- **과업 시간 개념 제거**: 과업은 날짜 단위로만 관리(시작/종료 시각, 반복주기 UI 제거). DB엔 여전히 `start_time`/`end_time`이 있고 내부적으로 00:00~23:59 고정값을 넣는데, 이 때문에 시간 중복 차단 로직상 **같은 날 한 사람에게 과업을 2개 이상 배정할 수 없다.** 사용자가 이 트레이드오프를 인지하고 승인함.
+- **서버→클라이언트 함수 prop 금지**: 한 번 이 문제로 관리자 대시보드/과업관리/과업배정 전체가 500 에러 났던 적 있음(원인: `DatePickerField`에 콜백 함수를 prop으로 전달). 새 클라이언트 컴포넌트를 만들 때 서버 컴포넌트에서 정의한 일반 함수를 prop으로 넘기지 말 것 — 문자열/plain data만 넘기거나, `"use server"` 액션(또는 그 bind 결과)만 넘길 것.
+- **`rank`는 예약어**: Postgres 컬럼명으로 쓰면 안 됨(순서집합 집계함수 `rank()`와 충돌). 비슷한 사고를 막기 위해 새 컬럼명 지을 때 Postgres 내장 함수명과 겹치지 않는지 확인할 것.
 
 ---
 
-## 다음 단계 (다음 세션 시작 시 이 순서로)
-1. **(최우선) `supabase/fix_missing_defaults.sql` → `supabase/superadmin.sql` 순서로 Supabase SQL Editor에서 실행.** 이 둘을 안 돌리면 팀 생성/합류/과업/배정 등 대부분의 insert가 계속 실패한다.
-2. **전체 흐름 테스트** — 일반 계정 가입(이메일 인증 없이 바로 로그인) → `/onboarding`에서 팀 드롭다운 선택+합류 신청 → `/pending` 진입 → tothejp 계정으로 `/admin/members`에서 승인 → 일정 입력 → 배정 → 자동배정 → 휴가 재배정 → 완료 체크 → 공정성 지표
-3. tothejp 계정으로 `/admin`, `/admin/tasks`, `/admin/assign`, `/admin/fairness`, `/admin/members`에서 팀 전환 드롭다운으로 지원중대/운용중대/본부중대를 오가며 각 팀 데이터가 올바르게 분리되어 보이는지 확인
-4. UI 리디자인 실사용 확인 — 사이드바 내비게이션(관리자 5개/팀원 2개 메뉴), 관리자 대시보드 캘린더 날짜 선택, 로그인 화면 로고
-5. 로그아웃 405 에러 재현 여부 확인 (Network 탭에서 실제 요청 Method 확인 — 사용자가 확인해주기로 했었음, 아직 회신 없음)
-6. 문제없으면 `app/(auth)/signup/actions.ts`에 남겨둔 디버그용 에러 메시지를 사용자 친화적 문구로 되돌리기
+## 다음 단계
+1. **`supabase/add_member_rank.sql` 실행** (최우선, 위 참고)
+2. 실행 후 계급 지정 기능(조직원 관리 페이지) 실사용 확인
+3. 중대 현황판에 통합된 과업 배정(Drag & Drop) 실사용 재확인 — 페이지 하나에 로직이 많아졌으니 여러 날짜/여러 과업으로 테스트
+4. 스킬 태그 Drag & Drop 실사용 확인 (그랩/드롭 제스처가 모바일 관리자 접속 시엔 조회 전용으로 자동 전환되는지도 함께)
+5. 과업 수정 모달 실사용 확인
+6. 공정성 지표 — 사용자가 "차후 기능 개선 예정"이라고 밝힘, 다음 요청 대기
 
 ---
 
 ## 아키텍처 결정 사항
-- **런타임 쿼리**: Supabase 클라이언트 전용 (RLS 적용됨) — Prisma는 스키마/마이그레이션 전용
-- **enum**: 모두 소문자 (`admin/member`, `available/vacation/dayoff`, `assigned/vacant/completed`, `manual/auto`)
-- **RepeatType**: `none` 없음 — 반복 없는 경우 `null` 저장
-- **availabilities**: row-per-day 방식 (`start_date = end_date = 날짜`), 수정 시 delete+insert
+- **런타임 쿼리**: Supabase 클라이언트 전용 (RLS 적용됨) — Prisma는 스키마 문서용
+- **enum**: 소문자(`admin/member`, `available/vacation/dayoff`, `assigned/vacant/completed`, `manual/auto`) + 계급은 한글 값(`이병/일병/상병/병장`)
+- **availabilities**: row-per-day 방식, 수정 시 delete+insert
 - **assignments**: `date` 컬럼 없음 — 날짜 필터는 tasks 테이블 조인으로 처리
-- **역할-플랫폼 분리**: 팀원=모바일 전용, 관리자=PC 전용(배정) + 모바일(조회)
+- **역할-플랫폼 분리**: 팀원=모바일 전용, 관리자=PC 전용(과업 생성/배정) + 모바일(조회 전용, `DeviceGuard.tsx`가 `/admin/tasks` 경로만 모바일 차단 — 배정은 중대 현황판이 자체적으로 모바일 시 조회 전용 뷰로 전환하므로 별도 차단 불필요)
 - **스킬 미보유 배정**: 하드 차단 아닌 경고 모달 + `skill_override=true` 기록
-- **시간 중복 배정**: 하드 차단
-- **가입 승인**: 이메일 인증 대신 관리자 승인. `members.status`(active/pending), 관리자가 `/admin/members`에서 승인
-- **팀 생성**: 일반 사용자는 팀을 만들 수 없음. 관리자(=지금은 개발자)가 SQL로 미리 만든 팀 중에서 사용자가 `/onboarding` 드롭다운으로 선택해 합류 신청만 가능
-- **슈퍼관리자**: `members.user_id`가 전역 UNIQUE라 한 계정=한 팀 정식 멤버 제약이 있어, 여러 팀을 관리해야 하는 계정(tothejp)은 `superadmins` 테이블 등록 + 팀 전환 UI로 예외 처리. 일반 관리자는 여전히 자기 팀 1개만 봄
-- **알려진 문서-실제 DB 불일치**: `prisma/schema.prisma`/`supabase/rls_policies.sql`이 실제 Supabase 스키마와 완전히 일치하지 않는다 (예: 앱 코드가 사용하는 `invitations` 테이블·`validate_invitation` RPC는 이 파일들에 정의돼 있지 않음 — Supabase 대시보드에서 직접 추가된 것으로 추정). 새 기능 작업 시 이 파일들을 100% 신뢰하지 말고 실제 앱 코드의 쿼리를 기준으로 확인할 것
+- **시간 중복 배정**: 하드 차단(단, 위 트레이드오프로 사실상 하루 1과업 제한과 동일해짐)
+- **가입 승인**: 이메일 인증 대신 관리자 승인, 조직원 관리 페이지에서 처리
+- **팀 생성**: 관리자(개발자)가 SQL로만 생성, 사용자는 `/onboarding`에서 합류 신청만 가능
+- **슈퍼관리자**: `members.user_id` 전역 UNIQUE 제약 때문에 여러 팀 관리가 필요한 tothejp 계정만 `superadmins` 테이블 + 팀 전환 UI로 예외 처리
 
 ---
 
 ## 배포 환경
 - **Frontend/Backend**: Vercel (https://task-manager-rosy-theta.vercel.app)
-- **DB/Auth**: Supabase (프로젝트 ID: ewlktlbykhibiiqyxdor, 리전: ap-southeast-2)
+- **DB/Auth**: Supabase (프로젝트 ID: `ewlktlbykhibiiqyxdor`)
 - **GitHub**: https://github.com/tothejp/task_manager
 
 ---
 
 ## 보류/미정 사항 (Phase 2 이후)
+- 공정성 지표 기능 개선 (사용자가 예고함, 상세 요구사항 미정)
 - 스킬 숙련도 등급 도입
 - 외부 알림(카카오/슬랙) 연동
-- 멀티팀 지원, 임무 템플릿
 - LLM 기반 자동배정 고도화
 
 ---
 
-## 알려진 이슈
-- npm audit 경고 4건 (Next.js 14 라인, Next 15/16에서만 패치) — 스택 고정 정책상 유지
+## Supabase SQL 스크립트 목록 (실행 순서대로)
+모두 Supabase SQL Editor에서 직접 실행. 실행 여부는 매 세션 시작 시 사용자에게 확인할 것 — 이 문서만으로 신뢰하지 말 것.
+
+1. `supabase/rls_policies.sql` — 기본 RLS 정책 및 SECURITY DEFINER 함수
+2. `supabase/fix_missing_defaults.sql` — teams/members/skill_tags/tasks/assignments/availabilities `id`/`updated_at` 기본값 누락 수정
+3. `supabase/team_member_insert_policies.sql` — teams/members INSERT RLS 정책
+4. `supabase/member_approval.sql` — 가입 승인제(관리자 승인 방식) 관련 RLS/컬럼
+5. `supabase/superadmin.sql` — 슈퍼관리자 테이블/RPC, 팀 전환용 RLS, 초기 팀 3개 생성
+6. `supabase/pending_members_email_rpc.sql` — 조직원 관리 승인 대기 목록에 신청자 이메일 노출용 RPC
+7. `supabase/seed_test_data.sql` — (선택) 화면 확인용 스킬 태그/과업 시드
+8. **`supabase/add_member_rank.sql` — 미실행. 계급 컬럼 추가 (위 "지금 당장 필요한 작업" 참고)**
 
 ---
 
 ## 참고 문서
 - `task_manager_PRD.md` — 제품 요구사항 정의서
 - `CLAUDE.md` — 개발 작업 가이드
-- `prisma/schema.prisma` — 데이터 모델
-- `supabase/rls_policies.sql` — RLS 정책 및 SECURITY DEFINER 함수
-- `supabase/member_approval.sql` — 가입 승인제 관련 추가 DB 변경 (Supabase에서 직접 실행 필요, 실행 완료)
-- `supabase/team_member_insert_policies.sql` — teams/members INSERT RLS 정책 (Supabase에서 직접 실행 필요, 실행 완료)
-- `supabase/fix_missing_defaults.sql` — id/updated_at 기본값 누락 수정 (Supabase에서 직접 실행 필요, **미실행**, superadmin.sql보다 먼저 실행)
-- `supabase/superadmin.sql` — 슈퍼관리자/팀 전환/초기 팀 3개 생성 (Supabase에서 직접 실행 필요, **미실행**)
+- `prisma/schema.prisma` — 데이터 모델 문서(런타임에는 안 쓰임, 실제 DB와 100% 일치 보장 안 됨 — 새 기능 작업 시 앱 코드의 실제 쿼리를 기준으로 확인할 것)
