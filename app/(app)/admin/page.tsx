@@ -22,6 +22,18 @@ export default async function AdminDashboardPage({
 }: {
   searchParams: { date?: string };
 }) {
+  try {
+    return await AdminDashboardPageInner(searchParams);
+  } catch (err) {
+    return (
+      <pre className="whitespace-pre-wrap break-all p-6 text-xs text-red-700">
+        {String(err instanceof Error ? err.stack ?? err.message : err)}
+      </pre>
+    );
+  }
+}
+
+async function AdminDashboardPageInner(searchParams: { date?: string }) {
   const supabase = await createClient();
   const {
     data: { user },
