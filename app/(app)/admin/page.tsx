@@ -22,18 +22,6 @@ export default async function AdminDashboardPage({
 }: {
   searchParams: { date?: string };
 }) {
-  try {
-    return await AdminDashboardPageInner(searchParams);
-  } catch (err) {
-    return (
-      <pre className="whitespace-pre-wrap break-all p-6 text-xs text-red-700">
-        {String(err instanceof Error ? err.stack ?? err.message : err)}
-      </pre>
-    );
-  }
-}
-
-async function AdminDashboardPageInner(searchParams: { date?: string }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -49,10 +37,6 @@ async function AdminDashboardPageInner(searchParams: { date?: string }) {
 
   const date = searchParams.date ?? getTodayDateString();
   const today = getTodayDateString();
-
-  function dateHref(d: string): string {
-    return `/admin?date=${d}`;
-  }
 
   const [membersRes, availabilityRes] = await Promise.all([
     supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
@@ -115,7 +99,7 @@ async function AdminDashboardPageInner(searchParams: { date?: string }) {
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <h1 className="text-2xl font-semibold text-gray-900">중대 현황판</h1>
 
-      <DatePickerField selectedDate={date} today={today} hrefFor={dateHref} />
+      <DatePickerField selectedDate={date} today={today} basePath="/admin" />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <SummaryCard label="전체 인원" value={`${roster.length}명`} />

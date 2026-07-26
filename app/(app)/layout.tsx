@@ -10,15 +10,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const member = await getCurrentMember()
 
   if (member && member.status === 'active') {
-    try {
-      return await AppShell({ member, children: <DeviceGuard>{children}</DeviceGuard> })
-    } catch (err) {
-      return (
-        <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', padding: 24, fontSize: 12, color: 'red' }}>
-          {String(err instanceof Error ? err.stack ?? err.message : err)}
-        </pre>
-      )
-    }
+    return (
+      <AppShell member={member}>
+        <DeviceGuard>{children}</DeviceGuard>
+      </AppShell>
+    )
   }
 
   return (

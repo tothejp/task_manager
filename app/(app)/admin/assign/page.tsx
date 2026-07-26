@@ -33,10 +33,6 @@ export default async function AdminAssignPage({
   const date = searchParams.date ?? getTodayDateString();
   const today = getTodayDateString();
 
-  function dateHref(d: string): string {
-    return `/admin/assign?date=${d}`;
-  }
-
   const [membersRes, availRes, skillTagsRes, memberSkillsRes, tasksRes, requiredSkillsRes] =
     await Promise.all([
       supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
@@ -161,7 +157,7 @@ export default async function AdminAssignPage({
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-6">
       <h1 className="text-2xl font-semibold text-gray-900">과업 배정</h1>
 
-      <DatePickerField selectedDate={date} today={today} hrefFor={dateHref} />
+      <DatePickerField selectedDate={date} today={today} basePath="/admin/assign" />
 
       {isMobile ? (
         <ReadOnlyAssignmentList

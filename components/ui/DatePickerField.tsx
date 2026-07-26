@@ -6,19 +6,26 @@ import { getMonthGrid, getAdjacentMonth, WEEKDAY_LABELS_KO } from "@/lib/date";
 
 // 앱 전역 날짜 필터용 공용 컴포넌트: 평소엔 선택된 날짜만 보여주고,
 // 클릭하면 그 자리에서 월 달력이 펼쳐진다. 날짜를 고르면 다시 접힌다.
+//
+// 주의: 서버 컴포넌트 → 클라이언트 컴포넌트 경계로는 함수를 prop으로 넘길 수 없다
+// (직렬화 불가 — 넘기면 렌더링 중 서버 예외 발생). 그래서 콜백 대신 basePath/paramName
+// 문자열만 받아서 href를 이 컴포넌트 내부에서 직접 조립한다.
 export function DatePickerField({
   selectedDate,
   today,
-  hrefFor,
+  basePath,
+  paramName = "date",
 }: {
   selectedDate: string;
   today: string;
-  hrefFor: (date: string) => string;
+  basePath: string;
+  paramName?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [viewMonth, setViewMonth] = useState(selectedDate.slice(0, 7));
 
   const cells = getMonthGrid(viewMonth);
+  const hrefFor = (date: string) => `${basePath}?${paramName}=${date}`;
 
   return (
     <div className="flex flex-col gap-2">

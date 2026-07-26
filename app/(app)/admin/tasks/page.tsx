@@ -34,10 +34,6 @@ export default async function AdminTasksPage({
   const from = searchParams.from ?? getTodayDateString();
   const today = getTodayDateString();
 
-  function fromHref(d: string): string {
-    return `/admin/tasks?from=${d}`;
-  }
-
   const [tasksRes, skillTagsRes, requiredSkillsRes] = await Promise.all([
     supabase
       .from("tasks")
@@ -67,7 +63,7 @@ export default async function AdminTasksPage({
         <p className="rounded bg-red-50 p-2 text-sm text-red-700">{searchParams.error}</p>
       )}
 
-      <DatePickerField selectedDate={from} today={today} hrefFor={fromHref} />
+      <DatePickerField selectedDate={from} today={today} basePath="/admin/tasks" paramName="from" />
 
       <table className="w-full border-collapse text-sm">
         <thead>
