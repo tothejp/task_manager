@@ -36,11 +36,9 @@ export default function DeviceGuard({ children }: { children: React.ReactNode })
     }
   }
 
-  // 관리자가 모바일로 배정/생성 작업 시도
+  // 관리자가 모바일로 과업 생성 작업 시도 (배정은 중대 현황판에서 조회 전용으로 자체 처리됨)
   if (deviceType === 'mobile' && !dismissed) {
-    const isAdminActionPath =
-      pathname.startsWith('/admin/tasks') ||
-      pathname.startsWith('/admin/assign')
+    const isAdminActionPath = pathname.startsWith('/admin/tasks')
     if (isAdminActionPath) {
       return (
         <div className="flex-1 bg-gray-50 flex items-center justify-center px-4">

@@ -371,6 +371,50 @@ function TaskDroppable({
   );
 }
 
+// 관리자가 모바일로 접속하면 Drag & Drop 대신 조회 전용 목록만 노출한다 (PRD 2장 정책)
+export function ReadOnlyAssignmentList({
+  tasks,
+  skillNameById,
+  gapNoticesByTask,
+}: {
+  tasks: TaskSlot[];
+  skillNameById: Record<string, string>;
+  gapNoticesByTask: Record<string, string[]>;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-gray-500">배정 변경은 PC에서만 가능합니다 (조회 전용).</p>
+      {tasks.map((t) => {
+        const emptySlots = Math.max(t.requiredHeadcount - t.assignedMembers.length, 0);
+        const gapNames = gapNoticesByTask[t.id] ?? [];
+        return (
+          <div key={t.id} className="rounded border p-3 text-sm">
+            <p className="font-medium">{t.title}</p>
+            <p className="text-xs text-gray-500">
+              {t.startTime.slice(0, 5)}~{t.endTime.slice(0, 5)} · 요구 {t.requiredHeadcount}명
+              {t.requiredSkillIds.length > 0 && (
+                <> · 필수 스킬: {t.requiredSkillIds.map((id) => skillNameById[id] ?? id).join(", ")}</>
+              )}
+            </p>
+            <p className="mt-1">
+              배정: {t.assignedMembers.map((a) => a.name).join(", ") || "없음"}
+              {emptySlots > 0 && <span className="text-orange-600"> (미충원 {emptySlots})</span>}
+            </p>
+            {gapNames.length > 0 && (
+              <p className="mt-1 text-xs text-red-600">
+                휴가로 공백 발생: {gapNames.join(", ")} — 재배정이 필요합니다.
+              </p>
+            )}
+          </div>
+        );
+      })}
+      {tasks.length === 0 && (
+        <p className="text-sm text-gray-400">이 날짜에 등록된 과업이 없습니다.</p>
+      )}
+    </div>
+  );
+}
+
 function SkillWarningModal({
   confirm,
   onCancel,

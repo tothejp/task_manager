@@ -125,7 +125,7 @@ export async function assignMember(
     "manual"
   );
 
-  if (result.ok) revalidatePath("/admin/assign");
+  if (result.ok) revalidatePath("/admin");
   return result;
 }
 
@@ -134,7 +134,7 @@ export async function unassignMember(assignmentId: string) {
 
   await supabase.from("assignments").delete().eq("id", assignmentId);
 
-  revalidatePath("/admin/assign");
+  revalidatePath("/admin");
 }
 
 // 자동배정 추천 계산 (미리보기 전용, DB에는 아무것도 기록하지 않는다 — PRD 3.6)
@@ -253,6 +253,6 @@ export async function confirmAutoAssignments(
     if (!result.ok) failedCount++;
   }
 
-  revalidatePath("/admin/assign");
+  revalidatePath("/admin");
   return { ok: true, failedCount };
 }

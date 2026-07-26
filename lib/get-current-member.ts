@@ -1,11 +1,14 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
+export type MemberRank = "이병" | "일병" | "상병" | "병장";
+
 export type CurrentMember = {
   id: string;
   team_id: string;
   role: "admin" | "member";
   status: "active" | "pending";
+  rank: MemberRank | null;
   name: string;
   teams: { name: string } | null;
 };
@@ -28,7 +31,7 @@ export async function getCurrentMember(): Promise<CurrentMember | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("members")
-    .select("id, team_id, role, status, name, teams(name)")
+    .select("id, team_id, role, status, rank, name, teams(name)")
     .eq("user_id", user.id)
     .maybeSingle();
 

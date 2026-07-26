@@ -5,6 +5,7 @@ import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { DatePickerField } from "@/components/ui/DatePickerField";
+import { TaskEditButton } from "@/components/admin/TaskEditButton";
 import { createTask, deleteTask } from "./actions";
 
 function getTodayDateString(): string {
@@ -92,12 +93,19 @@ export default async function AdminTasksPage({
               </td>
               {!isMobile && (
                 <td className="py-2">
-                  <form action={deleteTask}>
-                    <input type="hidden" name="taskId" value={t.id} />
-                    <button type="submit" className="text-xs text-red-600 underline">
-                      삭제
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-3">
+                    <TaskEditButton
+                      task={t}
+                      skillTags={skillTags}
+                      requiredSkillIds={requiredSkillsByTask.get(t.id) ?? []}
+                    />
+                    <form action={deleteTask}>
+                      <input type="hidden" name="taskId" value={t.id} />
+                      <button type="submit" className="text-xs text-red-600 underline">
+                        삭제
+                      </button>
+                    </form>
+                  </div>
                 </td>
               )}
             </tr>

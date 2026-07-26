@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentMember } from "@/lib/get-current-member";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { SkillManagement } from "@/components/admin/SkillManagement";
+import { MemberRankSelect } from "@/components/admin/MemberRankSelect";
 import { approveMember, rejectMember } from "./actions";
 
 type PendingMember = { id: string; name: string; email: string; created_at: string };
@@ -29,7 +30,7 @@ export default async function OrganizationPage({
   const [teamRes, pendingRes, membersRes, skillTagsRes, memberSkillsRes] = await Promise.all([
     supabase.from("teams").select("name").eq("id", teamId).single(),
     supabase.rpc("list_pending_members_for_team", { p_team_id: teamId }),
-    supabase.from("members").select("id, name").eq("team_id", teamId).eq("status", "active").order("name"),
+    supabase.from("members").select("id, name, rank").eq("team_id", teamId).eq("status", "active").order("name"),
     supabase.from("skill_tags").select("id, name").eq("team_id", teamId).order("name"),
     supabase.from("member_skills").select("member_id, skill_tag_id"),
   ]);
@@ -48,6 +49,7 @@ export default async function OrganizationPage({
   const roster = (membersRes.data ?? []).map((m) => ({
     id: m.id,
     name: m.name,
+    rank: m.rank as string | null,
     skillIds: skillsByMember.get(m.id) ?? [],
   }));
 
@@ -55,7 +57,7 @@ export default async function OrganizationPage({
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 p-6">
       <h1 className="text-2xl font-semibold text-gray-900">조직원 관리</h1>
 
-      <section className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 rounded border bg-orange-50/40 p-4">
         <h2 className="font-medium">가입 승인 대기</h2>
         {pendingRes.error && (
           <p className="rounded bg-red-50 p-2 text-sm text-red-700">
@@ -67,7 +69,7 @@ export default async function OrganizationPage({
           {pendingMembers.map((m) => (
             <div
               key={m.id}
-              className="flex items-center justify-between rounded border p-3 text-sm"
+              className="flex items-center justify-between rounded border bg-white p-3 text-sm"
             >
               <div className="flex flex-col gap-0.5">
                 <p className="font-medium">{m.name}</p>
@@ -92,7 +94,20 @@ export default async function OrganizationPage({
             <p className="text-sm text-gray-400">승인 대기 중인 팀원이 없습니다.</p>
           )}
         </div>
-      </section>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded border p-4">
+        <h2 className="font-medium">조직원 목록</h2>
+        <div className="flex flex-col gap-2">
+          {roster.map((m) => (
+            <div key={m.id} className="flex items-center justify-between rounded border-t pt-2 text-sm">
+              <p className="font-medium">{m.name}</p>
+              <MemberRankSelect memberId={m.id} rank={m.rank} />
+            </div>
+          ))}
+          {roster.length === 0 && <p className="text-sm text-gray-400">조직원이 없습니다.</p>}
+        </div>
+      </div>
 
       <SkillManagement members={roster} skillTags={skillTagsRes.data ?? []} error={searchParams.error} />
     </main>

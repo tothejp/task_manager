@@ -24,6 +24,13 @@ enum MemberStatus {
   pending
 }
 
+enum MemberRank {
+  이병
+  일병
+  상병
+  병장
+}
+
 enum AvailabilityStatus {
   available
   vacation
@@ -70,6 +77,7 @@ model Member {
   userId    String     @unique @map("user_id") @db.Uuid
   role      MemberRole
   status    MemberStatus @default(active)
+  rank      MemberRank?
   name      String
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")

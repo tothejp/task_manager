@@ -1,7 +1,6 @@
 import {
   LayoutDashboard,
   ClipboardList,
-  Users,
   Scale,
   UserCheck,
   CalendarDays,
@@ -14,9 +13,8 @@ export type NavItem = { href: string; label: string; icon: LucideIcon };
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "중대 현황판", icon: LayoutDashboard },
   { href: "/admin/tasks", label: "과업 관리", icon: ClipboardList },
-  { href: "/admin/assign", label: "과업 배정", icon: Users },
-  { href: "/admin/fairness", label: "공정성 지표", icon: Scale },
   { href: "/admin/organization", label: "조직원 관리", icon: UserCheck },
+  { href: "/admin/fairness", label: "공정성 지표", icon: Scale },
 ];
 
 export const MEMBER_NAV_ITEMS: NavItem[] = [

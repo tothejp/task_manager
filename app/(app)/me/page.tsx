@@ -17,6 +17,7 @@ export default async function MePage() {
 
       <div className="flex flex-col divide-y rounded border">
         <Field label="이름" value={member.name} />
+        <Field label="계급" value={member.rank ?? "미지정"} />
         <Field label="소속" value={member.teams?.name ?? "-"} />
         <Field label="역할" value={ROLE_LABELS[member.role]} />
         <Field label="계정" value={user.email ?? "-"} />

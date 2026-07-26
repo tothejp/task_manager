@@ -72,6 +72,42 @@ export async function createTask(formData: FormData) {
   revalidatePath("/admin/tasks");
 }
 
+export async function updateTask(formData: FormData) {
+  const { supabase, member } = await requireAdmin();
+
+  const taskId = formData.get("taskId") as string;
+  const title = formData.get("title") as string;
+  const description = (formData.get("description") as string) || null;
+  const date = formData.get("date") as string;
+  const requiredHeadcount = Number(formData.get("requiredHeadcount"));
+  const requiredSkillIds = formData.getAll("requiredSkillIds") as string[];
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ title, description, date, required_headcount: requiredHeadcount })
+    .eq("id", taskId)
+    .eq("team_id", member.team_id);
+
+  if (error) {
+    redirect(`/admin/tasks?error=${encodeURIComponent(error.message)}`);
+  }
+
+  const { error: clearError } = await supabase.from("task_skills").delete().eq("task_id", taskId);
+  if (clearError) {
+    redirect(`/admin/tasks?error=${encodeURIComponent(clearError.message)}`);
+  }
+
+  if (requiredSkillIds.length > 0) {
+    const rows = requiredSkillIds.map((skillTagId) => ({ task_id: taskId, skill_tag_id: skillTagId }));
+    const { error: skillError } = await supabase.from("task_skills").insert(rows);
+    if (skillError) {
+      redirect(`/admin/tasks?error=${encodeURIComponent(skillError.message)}`);
+    }
+  }
+
+  revalidatePath("/admin/tasks");
+}
+
 export async function deleteTask(formData: FormData) {
   const { supabase } = await requireAdmin();
   const taskId = formData.get("taskId") as string;

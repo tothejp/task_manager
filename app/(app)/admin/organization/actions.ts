@@ -67,32 +67,50 @@ export async function createSkillTag(formData: FormData) {
   revalidatePath("/admin/organization");
 }
 
-export async function grantSkill(formData: FormData) {
+export type SkillActionResult = { ok: true } | { ok: false; error: string };
+
+// Drag & Drop으로 스킬 태그를 조직원에게 끌어다 놓으면 호출된다 (클라이언트에서 직접 호출)
+export async function grantSkill(memberId: string, skillTagId: string): Promise<SkillActionResult> {
   const { supabase } = await requireAdmin();
-  const memberId = formData.get("memberId") as string;
-  const skillTagId = formData.get("skillTagId") as string;
 
   const { error } = await supabase
     .from("member_skills")
     .insert({ member_id: memberId, skill_tag_id: skillTagId });
 
   if (error) {
-    redirect(`/admin/organization?error=${encodeURIComponent(error.message)}`);
+    return { ok: false, error: error.code === "23505" ? "이미 보유한 스킬입니다." : error.message };
   }
 
   revalidatePath("/admin/organization");
+  return { ok: true };
 }
 
-export async function revokeSkill(formData: FormData) {
+export async function revokeSkill(memberId: string, skillTagId: string): Promise<SkillActionResult> {
   const { supabase } = await requireAdmin();
-  const memberId = formData.get("memberId") as string;
-  const skillTagId = formData.get("skillTagId") as string;
 
   const { error } = await supabase
     .from("member_skills")
     .delete()
     .eq("member_id", memberId)
     .eq("skill_tag_id", skillTagId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/admin/organization");
+  return { ok: true };
+}
+
+// 계급 지정/변경 (이병/일병/상병/병장)
+export async function updateMemberRank(memberId: string, rank: string) {
+  const { supabase, member } = await requireAdmin();
+
+  const { error } = await supabase
+    .from("members")
+    .update({ rank })
+    .eq("id", memberId)
+    .eq("team_id", member.team_id);
 
   if (error) {
     redirect(`/admin/organization?error=${encodeURIComponent(error.message)}`);
