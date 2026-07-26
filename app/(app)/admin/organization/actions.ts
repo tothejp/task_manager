@@ -108,7 +108,7 @@ export async function updateMemberRank(memberId: string, rank: string) {
 
   const { error } = await supabase
     .from("members")
-    .update({ rank })
+    .update({ member_rank: rank })
     .eq("id", memberId)
     .eq("team_id", member.team_id);
 

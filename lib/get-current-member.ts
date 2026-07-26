@@ -31,7 +31,7 @@ export async function getCurrentMember(): Promise<CurrentMember | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("members")
-    .select("id, team_id, role, status, rank, name, teams(name)")
+    .select("id, team_id, role, status, rank:member_rank, name, teams(name)")
     .eq("user_id", user.id)
     .maybeSingle();
 

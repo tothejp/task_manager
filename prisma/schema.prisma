@@ -24,11 +24,14 @@ enum MemberStatus {
   pending
 }
 
+// DB 컬럼/타입명은 member_rank(_enum) — "rank"는 PostgreSQL 순서집합 집계함수와 충돌
 enum MemberRank {
   이병
   일병
   상병
   병장
+
+  @@map("member_rank_enum")
 }
 
 enum AvailabilityStatus {
@@ -77,7 +80,7 @@ model Member {
   userId    String     @unique @map("user_id") @db.Uuid
   role      MemberRole
   status    MemberStatus @default(active)
-  rank      MemberRank?
+  rank      MemberRank? @map("member_rank")
   name      String
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
