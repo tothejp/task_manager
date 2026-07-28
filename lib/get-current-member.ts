@@ -13,8 +13,9 @@ export type CurrentMember = {
   teams: { name: string } | null;
 };
 
-// 같은 요청(렌더 1회) 안에서 여러 곳(레이아웃, getCurrentMember 등)이 불러도
-// 실제 Supabase Auth 호출은 한 번만 나가도록 React cache로 묶는다.
+// 같은 요청(렌더 1회) 안에서는 레이아웃과 각 페이지가 각자 auth/member 조회를
+// 다시 호출해도 실제 Supabase 호출은 한 번만 나가도록 React cache로 묶는다.
+// (레이아웃이 이미 조회한 결과를 페이지가 그대로 재사용하게 되는 셈)
 export const getAuthUser = cache(async () => {
   const supabase = await createClient();
   const {
@@ -23,7 +24,7 @@ export const getAuthUser = cache(async () => {
   return user;
 });
 
-export async function getCurrentMember(): Promise<CurrentMember | null> {
+export const getCurrentMember = cache(async (): Promise<CurrentMember | null> => {
   const user = await getAuthUser();
 
   if (!user) return null;
@@ -36,4 +37,4 @@ export async function getCurrentMember(): Promise<CurrentMember | null> {
     .maybeSingle();
 
   return data as unknown as CurrentMember | null;
-}
+});
