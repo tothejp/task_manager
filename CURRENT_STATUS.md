@@ -1,14 +1,27 @@
 # CURRENT_STATUS.md — 임무분담표(TaskShare, UI상 "Task Manager") 진행 상황
 
-마지막 업데이트: 2026-07-26
+마지막 업데이트: 2026-07-28
 
-## 현재 단계: 핵심 기능 + UI 개편 대부분 완료, DB 마이그레이션 1건 실행 대기 중(계급 기능이 이것 때문에 막혀 있음)
+## 현재 단계: 로그인/네비게이션 성능 개선 + UI 개선 다수 반영 완료. DB 마이그레이션 전부 실행 완료, 당장 막힌 작업 없음
 
 ---
 
-## ⚠️ 지금 당장 필요한 작업
-- **`supabase/add_member_rank.sql` 미실행.** 이게 없으면 `getCurrentMember()`(모든 인증 페이지에서 호출)가 실패해서 로그인한 모든 사용자 화면이 막힌다. 최우선으로 Supabase SQL Editor에서 실행할 것.
-  - 컬럼명을 `rank`로 만들면 PostgreSQL의 순서집합 집계함수 `rank()`와 충돌해 파싱 에러가 나므로, 실제 DB 컬럼/타입명은 `member_rank`/`member_rank_enum`이고 앱 코드에서는 `select`할 때 `rank:member_rank` 별칭을 써서 JS 쪽 필드명은 `rank`로 유지한다.
+### 이번 세션에서 반영한 것 (2026-07-28, 세 번째 라운드)
+- **로그인 에러 메시지 분리**: 기존엔 "이메일 또는 비밀번호가 올바르지 않습니다" 하나로만 안내했는데, 미등록 이메일/비밀번호 오류를 구분해서 보여주도록 변경([app/(auth)/login/actions.ts](app/(auth)/login/actions.ts)). Supabase는 계정 열거 공격 방지를 위해 이 둘을 기본적으로 구분해주지 않으므로, 이메일 가입 여부를 확인하는 SECURITY DEFINER RPC(`is_email_registered`)를 새로 추가함([supabase/email_lookup_rpc.sql](supabase/email_lookup_rpc.sql), 실행 완료).
+  - **보안 트레이드오프 안내함, 사용자 승인받고 진행**: 이 방식은 로그인 화면만으로 특정 이메일의 가입 여부를 확인할 수 있게 만든다(사용자 열거). 관리자 승인제라 외부인이 임의 가입할 수 없어 리스크가 낮다는 판단하에 의도적으로 허용.
+
+### 두 번째 라운드 (2026-07-28)
+- **모바일 사이드바 이름 잘림 수정**: 팀원(모바일 전용 사용자)이 보는 좁은 아이콘형 사이드바에서 "팀명 · 이름"이 한 글자로 잘려 보이던 것을, 데스크톱 폭(`md:` 이상)에서만 전체 텍스트를 보여주고 모바일에서는 텍스트 대신 사람 아이콘으로 표시하도록 변경([components/layout/Sidebar.tsx](components/layout/Sidebar.tsx)). `/me` 링크 자체는 그대로 유지.
+- **휴가 일정 저장 딜레이 원인 수정**: `setDayStatus`가 선택한 날짜 하나하나마다 순차적으로 delete+insert를 반복하고 있었음 — 휴가 기간을 여러 날 선택하거나 매주 반복 휴무(8주)를 선택하면 최대 14~16회의 순차 Supabase 왕복이 발생해 저장이 느렸음. 날짜 전체를 한 번에 지우고 한 번에 넣는 배치 쿼리로 변경해 선택한 날짜 수와 무관하게 왕복 2회로 고정([app/(app)/schedule/actions.ts](app/(app)/schedule/actions.ts)).
+- **저장완료 표시 추가**: 일정 저장 폼을 수동 제출(패시브 `<form action>`)에서 `onSubmit` 핸들러로 바꿔 저장 중/저장완료/실패 상태를 클라이언트에서 추적 — 저장 중엔 버튼이 "저장 중..."으로 비활성화되고, 완료되면 "저장완료" 텍스트가 표시됨([components/schedule/ScheduleCalendar.tsx](components/schedule/ScheduleCalendar.tsx)).
+
+### 이전 라운드에서 반영한 것 (2026-07-28, 첫 번째 라운드)
+- **로그인/메뉴 전환 딜레이 개선**: 레이아웃과 각 페이지가 auth/member/superadmin/teamId를 중복 조회하던 것을 `getCurrentMember`/`checkIsSuperadmin`/`resolveEffectiveTeamId`에 React `cache()`를 적용해 요청당 1회로 줄임([lib/get-current-member.ts](lib/get-current-member.ts), [lib/team-context.ts](lib/team-context.ts)). 로그인 시 `/dashboard`를 경유하지 않고 목적지로 바로 리다이렉트하도록 변경([app/(auth)/login/actions.ts](app/(auth)/login/actions.ts)).
+- **날짜 선택기**: 화면 중앙 모달 → 버튼 바로 아래 팝오버로 변경, 버튼 너비를 내용 크기로 축소([components/ui/DatePickerField.tsx](components/ui/DatePickerField.tsx)). 중대현황판/과업관리 공통 적용.
+- **중대현황판**: 전체/가용 인원 카드를 클릭하면 이름/상태 표가 펼쳐지는 접기 UI로 변경([components/admin/RosterSummary.tsx](components/admin/RosterSummary.tsx)). 과업 배정 보드와 미완료 과업 목록에서 시간 표시 제거(과업이 날짜 단위로만 관리되어 시간 표시가 항상 00:00~23:59로 의미가 없었음).
+- **과업 관리**: 표에서 과업명/설명을 클릭하면 바로 인라인 수정, 요구인원은 드롭다운으로 즉시 변경 가능([components/admin/TaskInlineFields.tsx](components/admin/TaskInlineFields.tsx)) — 기존 "수정" 버튼의 전체 수정 모달과 별개 경로로 공존. "새 과업 만들기"를 인라인 폼에서 모달로 전환([components/admin/TaskEditButton.tsx](components/admin/TaskEditButton.tsx)에 `TaskCreateButton` 추가).
+- **조직원 관리 — 스킬 태그 전역 공유**: 팀별로 분리돼 있던 스킬 태그를 모든 중대가 공유하는 하나의 카탈로그로 전환. 앱 코드에서 `skill_tags` 조회 시 `team_id` 필터 제거(admin/tasks/organization 3곳), RLS도 `supabase/skill_tags_shared.sql`로 전체 공개 조회 + 관리자면 팀 무관 쓰기로 변경(실행 완료). "새 스킬 추가"를 모달로 전환, 스킬 칩을 더블클릭하거나 길게 누르면 확인 후 삭제(다른 팀이 쓰고 있어도 함께 삭제됨 — DB cascade).
+  - **알려진 제약**: `skill_tags`의 DB 유니크 제약이 여전히 `(team_id, name)`이라, 이미 다른 팀이 같은 이름으로 만들어둔 스킬이 있으면 전역 목록에 동일 이름이 중복으로 보일 수 있다(현재 시드 데이터는 본부중대에만 스킬이 있어서 당장은 문제 없음). 전역 유니크로 바꾸려면 별도 스키마 마이그레이션 필요 — 다음에 필요해지면 알려줄 것.
 
 ---
 
@@ -29,7 +42,7 @@
 - [x] 공정성 지표 — `/admin/fairness`, 구성원별 누적 배정 막대그래프, 평균 대비 ±20% 편차 경고. **사이드바 메뉴 맨 아래로 이동, 추가 기능 개선은 보류 중**
 - [x] **조직원 관리 — `/admin/organization`** (구 "팀원 승인" 탭 대체): 세 영역으로 구성
   1. 가입 승인 대기 — 별도 카드(주황 배경)로 분리, 신청자 이름/계정(이메일)/신청 소속 표시(`list_pending_members_for_team` RPC로 auth.users 이메일 조회)
-  2. 조직원 목록 — 이름 + **계급(이병/일병/상병/병장) 선택 드롭다운**(`MemberRankSelect`, 위 "지금 당장 필요한 작업" 참고)
+  2. 조직원 목록 — 이름 + **계급(이병/일병/상병/병장) 선택 드롭다운**(`MemberRankSelect`)
   3. 스킬 태그 관리 — 태그 생성 + **Drag & Drop으로 조직원에게 부여**(스킬 칩을 조직원 위로 드래그), 배지 클릭으로 회수
 - [x] 슈퍼관리자 + 팀 전환 (tothejp 전용) — `public.superadmins` + `is_superadmin()`, 사이드바 `TeamSwitcher`(쿠키 `active_team_id`), `lib/team-context.ts`의 `resolveEffectiveTeamId()`가 핵심
 - [x] 로그인/회원가입 UI — 로고+텍스트가 합쳐진 이미지(`public/task-manager-logo.png`)를 헤더로 사용, 로고 색에서 뽑은 `brand` 팔레트(`tailwind.config.ts`)로 버튼/링크/포커스링 통일. 모바일에서 입력 글씨가 회색으로 보이던 문제 수정(`text-gray-900` 명시)
@@ -53,12 +66,13 @@
 ---
 
 ## 다음 단계
-1. **`supabase/add_member_rank.sql` 실행** (최우선, 위 참고)
-2. 실행 후 계급 지정 기능(조직원 관리 페이지) 실사용 확인
-3. 중대 현황판에 통합된 과업 배정(Drag & Drop) 실사용 재확인 — 페이지 하나에 로직이 많아졌으니 여러 날짜/여러 과업으로 테스트
-4. 스킬 태그 Drag & Drop 실사용 확인 (그랩/드롭 제스처가 모바일 관리자 접속 시엔 조회 전용으로 자동 전환되는지도 함께)
-5. 과업 수정 모달 실사용 확인
-6. 공정성 지표 — 사용자가 "차후 기능 개선 예정"이라고 밝힘, 다음 요청 대기
+1. 스킬 태그가 팀 구분 없이 전역으로 보이는지, 다른 팀 관리자가 만든 스킬도 D&D 가능한지 실사용 확인 (RLS 스크립트 실행 완료)
+2. 로그인/사이드바 메뉴 전환 체감 속도 확인 (레이아웃-페이지 중복 조회 캐싱 + 로그인 리다이렉트 단축 적용됨)
+3. 모바일에서 팀원 사이드바 아이콘/`/me` 이동 확인, 휴가 등록(특히 여러 날짜 범위/매주 반복) 저장 속도 및 "저장완료" 표시 실사용 확인
+4. 중대 현황판 — 날짜 선택 팝오버 위치/너비, 전체·가용 인원 접기 펼치기, 과업 배정 보드 실사용 확인
+5. 과업 관리 — 과업명/설명 인라인 수정, 요구인원 드롭다운, "새 과업 만들기" 모달 실사용 확인
+6. 조직원 관리 — 스킬 태그 모달 생성, 더블클릭/롱프레스 삭제 실사용 확인 (모바일 롱프레스 제스처가 드래그 시작과 충돌하지 않는지 특히 확인 필요)
+7. 공정성 지표 — 사용자가 "차후 기능 개선 예정"이라고 밝힘, 다음 요청 대기
 
 ---
 
@@ -73,6 +87,7 @@
 - **가입 승인**: 이메일 인증 대신 관리자 승인, 조직원 관리 페이지에서 처리
 - **팀 생성**: 관리자(개발자)가 SQL로만 생성, 사용자는 `/onboarding`에서 합류 신청만 가능
 - **슈퍼관리자**: `members.user_id` 전역 UNIQUE 제약 때문에 여러 팀 관리가 필요한 tothejp 계정만 `superadmins` 테이블 + 팀 전환 UI로 예외 처리
+- **스킬 태그는 팀 격리 예외**: `skill_tags`만 모든 팀이 공유하는 전역 카탈로그(2026-07-28부터). 다른 모든 테이블(members/tasks/assignments/availabilities 등)은 여전히 팀 단위로 격리됨 — CLAUDE.md의 팀 단위 RLS 원칙은 이 테이블 하나만 예외.
 
 ---
 
@@ -101,7 +116,9 @@
 5. `supabase/superadmin.sql` — 슈퍼관리자 테이블/RPC, 팀 전환용 RLS, 초기 팀 3개 생성
 6. `supabase/pending_members_email_rpc.sql` — 조직원 관리 승인 대기 목록에 신청자 이메일 노출용 RPC
 7. `supabase/seed_test_data.sql` — (선택) 화면 확인용 스킬 태그/과업 시드
-8. **`supabase/add_member_rank.sql` — 미실행. 계급 컬럼 추가 (위 "지금 당장 필요한 작업" 참고)**
+8. `supabase/add_member_rank.sql` — 계급 컬럼 추가 (실행 완료)
+9. `supabase/skill_tags_shared.sql` — 스킬 태그 전역 공유 전환 (실행 완료)
+10. `supabase/email_lookup_rpc.sql` — 로그인 에러 메시지 분리용 RPC (실행 완료)
 
 ---
 
