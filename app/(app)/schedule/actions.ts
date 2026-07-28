@@ -17,23 +17,27 @@ async function upsertAvailabilityDates(
 ) {
   const supabase = await createClient();
 
-  for (const date of dates) {
-    await supabase
-      .from("availabilities")
-      .delete()
-      .eq("member_id", memberId)
-      .eq("start_date", date);
+  // 날짜마다 delete+insert를 순차 반복하면 휴가 기간이나 매주 반복 휴무처럼
+  // 날짜가 여러 개일 때 왕복이 그만큼 배로 늘어나 저장이 눈에 띄게 느려진다.
+  // 전체 날짜를 한 번에 지우고 한 번에 넣어서 선택한 날짜 수와 무관하게 왕복 2회로 끝낸다.
+  const { error: deleteError } = await supabase
+    .from("availabilities")
+    .delete()
+    .eq("member_id", memberId)
+    .in("start_date", dates);
 
-    const { error } = await supabase.from("availabilities").insert({
-      member_id: memberId,
-      start_date: date,
-      end_date: date,
-      status,
-      repeat_type: repeatType,
-    });
+  if (deleteError) throw new Error(deleteError.message);
 
-    if (error) throw new Error(error.message);
-  }
+  const rows = dates.map((date) => ({
+    member_id: memberId,
+    start_date: date,
+    end_date: date,
+    status,
+    repeat_type: repeatType,
+  }));
+
+  const { error: insertError } = await supabase.from("availabilities").insert(rows);
+  if (insertError) throw new Error(insertError.message);
 }
 
 export async function setDayStatus(formData: FormData) {

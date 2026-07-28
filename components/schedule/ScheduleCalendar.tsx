@@ -32,10 +32,35 @@ export function ScheduleCalendar({
   availabilities: AvailabilityRow[];
 }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const byDate = new Map(availabilities.map((a) => [a.start_date, a]));
   const cells = getMonthGrid(month);
   const selected = selectedDate ? byDate.get(selectedDate) : undefined;
+
+  function selectDate(date: string) {
+    setSelectedDate(date);
+    setSaved(false);
+    setError(null);
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    setSaved(false);
+    setError(null);
+    setIsSaving(true);
+    try {
+      await setDayStatus(formData);
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "저장에 실패했습니다.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -51,7 +76,7 @@ export function ScheduleCalendar({
             <button
               key={cell.date}
               type="button"
-              onClick={() => setSelectedDate(cell.date)}
+              onClick={() => selectDate(cell.date)}
               className={[
                 "rounded py-2 text-xs",
                 cell.inMonth ? "" : "opacity-30",
@@ -72,10 +97,15 @@ export function ScheduleCalendar({
             {selected ? `(${STATUS_LABELS[selected.status]})` : "(미지정 · 가용으로 처리)"}
           </p>
 
-          <form action={setDayStatus} className="flex flex-col gap-2">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-2">
             <input type="hidden" name="date" value={selectedDate} />
-            <StatusFields />
+            <StatusFields isSaving={isSaving} />
           </form>
+
+          {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+          {saved && !isSaving && !error && (
+            <p className="mt-1 text-xs text-green-600">저장완료</p>
+          )}
 
           {selected && (
             <form action={clearDayStatus} className="mt-2">
@@ -91,7 +121,7 @@ export function ScheduleCalendar({
   );
 }
 
-function StatusFields() {
+function StatusFields({ isSaving }: { isSaving: boolean }) {
   const [status, setStatus] = useState<AvailabilityStatus>("vacation");
 
   return (
@@ -125,8 +155,12 @@ function StatusFields() {
         </label>
       )}
 
-      <button type="submit" className="mt-1 rounded bg-black px-3 py-2 text-sm text-white">
-        저장
+      <button
+        type="submit"
+        disabled={isSaving}
+        className="mt-1 rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
+      >
+        {isSaving ? "저장 중..." : "저장"}
       </button>
     </>
   );

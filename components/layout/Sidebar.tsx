@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { ADMIN_NAV_ITEMS, MEMBER_NAV_ITEMS } from "./nav-items";
 import { TeamSwitcher } from "@/components/admin/TeamSwitcher";
 
@@ -39,7 +39,7 @@ export function Sidebar({
         <p className="hidden truncate text-xs text-gray-500 md:block">
           {teamName} · {memberName}
         </p>
-        <span className="text-xs text-gray-500 md:hidden">{memberName.slice(0, 1)}</span>
+        <User className="h-5 w-5 shrink-0 text-gray-400 md:hidden" />
       </Link>
 
       <nav className="flex flex-1 flex-col gap-1 px-2">
