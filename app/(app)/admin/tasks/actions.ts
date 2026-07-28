@@ -108,6 +108,58 @@ export async function updateTask(formData: FormData) {
   revalidatePath("/admin/tasks");
 }
 
+export type TaskActionResult = { ok: true } | { ok: false; error: string };
+
+// 표에서 과업명/설명/요구인원을 개별적으로 바로 수정할 때 쓰는 경량 액션들
+// (전체 수정 모달과 별개로, 클릭 한 번으로 빠르게 고칠 수 있도록 추가)
+export async function updateTaskTitle(taskId: string, title: string): Promise<TaskActionResult> {
+  const { supabase, member } = await requireAdmin();
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ title })
+    .eq("id", taskId)
+    .eq("team_id", member.team_id);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/tasks");
+  return { ok: true };
+}
+
+export async function updateTaskDescription(
+  taskId: string,
+  description: string
+): Promise<TaskActionResult> {
+  const { supabase, member } = await requireAdmin();
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ description: description || null })
+    .eq("id", taskId)
+    .eq("team_id", member.team_id);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/tasks");
+  return { ok: true };
+}
+
+export async function updateTaskHeadcount(
+  taskId: string,
+  requiredHeadcount: number
+): Promise<TaskActionResult> {
+  const { supabase, member } = await requireAdmin();
+
+  const { error } = await supabase
+    .from("tasks")
+    .update({ required_headcount: requiredHeadcount })
+    .eq("id", taskId)
+    .eq("team_id", member.team_id);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/tasks");
+  return { ok: true };
+}
+
 export async function deleteTask(formData: FormData) {
   const { supabase } = await requireAdmin();
   const taskId = formData.get("taskId") as string;

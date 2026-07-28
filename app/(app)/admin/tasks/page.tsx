@@ -5,8 +5,9 @@ import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { DatePickerField } from "@/components/ui/DatePickerField";
-import { TaskEditButton } from "@/components/admin/TaskEditButton";
-import { createTask, deleteTask } from "./actions";
+import { TaskEditButton, TaskCreateButton } from "@/components/admin/TaskEditButton";
+import { InlineTaskTitle, InlineTaskDescription, TaskHeadcountSelect } from "@/components/admin/TaskInlineFields";
+import { deleteTask } from "./actions";
 
 function getTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -42,7 +43,7 @@ export default async function AdminTasksPage({
       .eq("team_id", teamId)
       .gte("date", from)
       .order("date"),
-    supabase.from("skill_tags").select("id, name").eq("team_id", teamId).order("name"),
+    supabase.from("skill_tags").select("id, name").order("name"), // 모든 팀이 공유하는 전역 스킬 카탈로그
     supabase.from("task_skills").select("task_id, skill_tag_id"),
   ]);
 
@@ -81,10 +82,25 @@ export default async function AdminTasksPage({
             <tr key={t.id} className="border-b align-top">
               <td className="py-2">{t.date}</td>
               <td className="py-2">
-                <p className="font-medium">{t.title}</p>
-                {t.description && <p className="text-xs text-gray-500">{t.description}</p>}
+                {isMobile ? (
+                  <>
+                    <p className="font-medium">{t.title}</p>
+                    {t.description && <p className="text-xs text-gray-500">{t.description}</p>}
+                  </>
+                ) : (
+                  <>
+                    <InlineTaskTitle taskId={t.id} title={t.title} />
+                    <InlineTaskDescription taskId={t.id} description={t.description} />
+                  </>
+                )}
               </td>
-              <td className="py-2">{t.required_headcount}명</td>
+              <td className="py-2">
+                {isMobile ? (
+                  `${t.required_headcount}명`
+                ) : (
+                  <TaskHeadcountSelect taskId={t.id} requiredHeadcount={t.required_headcount} />
+                )}
+              </td>
               <td className="py-2">
                 {(requiredSkillsByTask.get(t.id) ?? [])
                   .map((id) => skillTags.find((s) => s.id === id)?.name)
@@ -125,66 +141,8 @@ export default async function AdminTasksPage({
           과업 생성/삭제 등 변경 작업은 PC에서만 가능합니다 (조회 전용).
         </p>
       ) : (
-        <TaskForm skillTags={skillTags} />
+        <TaskCreateButton skillTags={skillTags} />
       )}
     </main>
-  );
-}
-
-function TaskForm({ skillTags }: { skillTags: { id: string; name: string }[] }) {
-  return (
-    <form action={createTask} className="flex flex-col gap-3 rounded border p-4">
-      <h2 className="font-medium">새 과업 만들기</h2>
-
-      <input
-        type="text"
-        name="title"
-        placeholder="과업 이름"
-        required
-        className="rounded border px-2 py-1 text-sm"
-      />
-      <textarea
-        name="description"
-        placeholder="설명(선택)"
-        className="rounded border px-2 py-1 text-sm"
-      />
-
-      <div className="flex flex-wrap gap-3">
-        <label className="flex flex-col text-sm">
-          날짜
-          <input type="date" name="date" required className="rounded border px-2 py-1" />
-        </label>
-        <label className="flex flex-col text-sm">
-          요구 인원수
-          <input
-            type="number"
-            name="requiredHeadcount"
-            min={1}
-            defaultValue={1}
-            required
-            className="w-24 rounded border px-2 py-1"
-          />
-        </label>
-      </div>
-
-      <fieldset className="flex flex-col gap-1 text-sm">
-        <legend className="mb-1 font-medium">필수 스킬(선택, 복수 가능)</legend>
-        <div className="flex flex-wrap gap-3">
-          {skillTags.map((tag) => (
-            <label key={tag.id} className="flex items-center gap-1">
-              <input type="checkbox" name="requiredSkillIds" value={tag.id} />
-              {tag.name}
-            </label>
-          ))}
-          {skillTags.length === 0 && (
-            <span className="text-xs text-gray-400">등록된 스킬 태그가 없습니다.</span>
-          )}
-        </div>
-      </fieldset>
-
-      <button type="submit" className="rounded bg-black px-3 py-2 text-sm text-white">
-        과업 만들기
-      </button>
-    </form>
   );
 }

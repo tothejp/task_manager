@@ -69,6 +69,22 @@ export async function createSkillTag(formData: FormData) {
 
 export type SkillActionResult = { ok: true } | { ok: false; error: string };
 
+// 스킬 태그는 이제 전 팀 공유 자원이므로 팀 구분 없이 삭제 가능(관리자 전용).
+// 다른 팀이 이미 부여/요구 스킬로 쓰고 있어도 함께 정리된다(DB에 cascade 설정됨) — 그래서
+// 클라이언트에서 더블클릭/롱프레스 시 확인창을 한 번 더 거치게 해둔다.
+export async function deleteSkillTag(skillTagId: string): Promise<SkillActionResult> {
+  const { supabase } = await requireAdmin();
+
+  const { error } = await supabase.from("skill_tags").delete().eq("id", skillTagId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath("/admin/organization");
+  return { ok: true };
+}
+
 // Drag & Drop으로 스킬 태그를 조직원에게 끌어다 놓으면 호출된다 (클라이언트에서 직접 호출)
 export async function grantSkill(memberId: string, skillTagId: string): Promise<SkillActionResult> {
   const { supabase } = await requireAdmin();

@@ -31,7 +31,7 @@ export default async function OrganizationPage({
     supabase.from("teams").select("name").eq("id", teamId).single(),
     supabase.rpc("list_pending_members_for_team", { p_team_id: teamId }),
     supabase.from("members").select("id, name, rank:member_rank").eq("team_id", teamId).eq("status", "active").order("name"),
-    supabase.from("skill_tags").select("id, name").eq("team_id", teamId).order("name"),
+    supabase.from("skill_tags").select("id, name").order("name"), // 모든 팀이 공유하는 전역 스킬 카탈로그
     supabase.from("member_skills").select("member_id, skill_tag_id"),
   ]);
 

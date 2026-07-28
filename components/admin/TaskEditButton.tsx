@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { updateTask } from "@/app/(app)/admin/tasks/actions";
+import { useState, type ReactNode } from "react";
+import { createTask, updateTask } from "@/app/(app)/admin/tasks/actions";
 
 type Task = {
   id: string;
@@ -12,22 +12,23 @@ type Task = {
 };
 type SkillTag = { id: string; name: string };
 
-export function TaskEditButton({
+// 과업 생성/수정 모달 — task를 주면 수정 모드, 안 주면 새 과업 만들기 모드로 동작한다
+function TaskFormModal({
+  trigger,
   task,
   skillTags,
-  requiredSkillIds,
+  requiredSkillIds = [],
 }: {
-  task: Task;
+  trigger: (open: () => void) => ReactNode;
+  task?: Task;
   skillTags: SkillTag[];
-  requiredSkillIds: string[];
+  requiredSkillIds?: string[];
 }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="text-xs text-blue-600 underline">
-        수정
-      </button>
+      {trigger(() => setOpen(true))}
 
       {open && (
         <div
@@ -35,24 +36,25 @@ export function TaskEditButton({
           onClick={() => setOpen(false)}
         >
           <form
-            action={updateTask}
+            action={task ? updateTask : createTask}
             onSubmit={() => setOpen(false)}
             onClick={(e) => e.stopPropagation()}
             className="flex w-full max-w-sm flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-lg"
           >
-            <h2 className="font-medium">과업 수정</h2>
-            <input type="hidden" name="taskId" value={task.id} />
+            <h2 className="font-medium">{task ? "과업 수정" : "새 과업 만들기"}</h2>
+            {task && <input type="hidden" name="taskId" value={task.id} />}
 
             <input
               type="text"
               name="title"
-              defaultValue={task.title}
+              placeholder="과업 이름"
+              defaultValue={task?.title}
               required
               className="rounded border px-2 py-1 text-sm"
             />
             <textarea
               name="description"
-              defaultValue={task.description ?? ""}
+              defaultValue={task?.description ?? ""}
               placeholder="설명(선택)"
               className="rounded border px-2 py-1 text-sm"
             />
@@ -60,7 +62,13 @@ export function TaskEditButton({
             <div className="flex flex-wrap gap-3">
               <label className="flex flex-col text-sm">
                 날짜
-                <input type="date" name="date" defaultValue={task.date} required className="rounded border px-2 py-1" />
+                <input
+                  type="date"
+                  name="date"
+                  defaultValue={task?.date}
+                  required
+                  className="rounded border px-2 py-1"
+                />
               </label>
               <label className="flex flex-col text-sm">
                 요구 인원수
@@ -68,7 +76,7 @@ export function TaskEditButton({
                   type="number"
                   name="requiredHeadcount"
                   min={1}
-                  defaultValue={task.required_headcount}
+                  defaultValue={task?.required_headcount ?? 1}
                   required
                   className="w-24 rounded border px-2 py-1"
                 />
@@ -100,12 +108,52 @@ export function TaskEditButton({
                 취소
               </button>
               <button type="submit" className="rounded bg-black px-3 py-1.5 text-sm text-white">
-                저장
+                {task ? "저장" : "만들기"}
               </button>
             </div>
           </form>
         </div>
       )}
     </>
+  );
+}
+
+export function TaskEditButton({
+  task,
+  skillTags,
+  requiredSkillIds,
+}: {
+  task: Task;
+  skillTags: SkillTag[];
+  requiredSkillIds: string[];
+}) {
+  return (
+    <TaskFormModal
+      task={task}
+      skillTags={skillTags}
+      requiredSkillIds={requiredSkillIds}
+      trigger={(open) => (
+        <button type="button" onClick={open} className="text-xs text-blue-600 underline">
+          수정
+        </button>
+      )}
+    />
+  );
+}
+
+export function TaskCreateButton({ skillTags }: { skillTags: SkillTag[] }) {
+  return (
+    <TaskFormModal
+      skillTags={skillTags}
+      trigger={(open) => (
+        <button
+          type="button"
+          onClick={open}
+          className="self-start rounded bg-black px-3 py-2 text-sm text-white"
+        >
+          새 과업 만들기
+        </button>
+      )}
+    />
   );
 }
