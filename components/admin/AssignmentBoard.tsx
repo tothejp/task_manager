@@ -283,9 +283,7 @@ function MemberDraggable({
       )}
       {member.assignedSlots.length > 0 && (
         <p className="text-xs text-blue-600">
-          {member.assignedSlots
-            .map((s) => `${s.startTime.slice(0, 5)}~${s.endTime.slice(0, 5)} ${s.title}`)
-            .join(" / ")}
+          {member.assignedSlots.map((s) => s.title).join(" / ")}
         </p>
       )}
     </div>
@@ -326,7 +324,7 @@ function TaskDroppable({
         <div>
           <p className="font-medium">{task.title}</p>
           <p className="text-xs text-gray-500">
-            {task.startTime.slice(0, 5)}~{task.endTime.slice(0, 5)} · 요구 {task.requiredHeadcount}명
+            요구 {task.requiredHeadcount}명
             {task.requiredSkillIds.length > 0 && (
               <> · 필수 스킬: {task.requiredSkillIds.map((id) => skillNameById[id] ?? id).join(", ")}</>
             )}
@@ -391,7 +389,7 @@ export function ReadOnlyAssignmentList({
           <div key={t.id} className="rounded border p-3 text-sm">
             <p className="font-medium">{t.title}</p>
             <p className="text-xs text-gray-500">
-              {t.startTime.slice(0, 5)}~{t.endTime.slice(0, 5)} · 요구 {t.requiredHeadcount}명
+              요구 {t.requiredHeadcount}명
               {t.requiredSkillIds.length > 0 && (
                 <> · 필수 스킬: {t.requiredSkillIds.map((id) => skillNameById[id] ?? id).join(", ")}</>
               )}

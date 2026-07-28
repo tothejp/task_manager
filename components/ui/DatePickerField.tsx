@@ -28,25 +28,25 @@ export function DatePickerField({
   const hrefFor = (date: string) => `${basePath}?${paramName}=${date}`;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="relative inline-block self-start">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-base font-medium text-gray-900 hover:bg-gray-50"
+        className="flex items-center gap-2 whitespace-nowrap rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50"
       >
         {selectedDate === today ? `오늘 (${selectedDate})` : selectedDate}
         <span className="text-gray-400">{expanded ? "▲" : "▼"}</span>
       </button>
 
       {expanded && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => setExpanded(false)}
-        >
+        <>
+          {/* 바깥 클릭 시 닫기용 — 배경은 가리지 않는다 */}
+          <div className="fixed inset-0 z-40" onClick={() => setExpanded(false)} />
           <div
-            className="flex w-full max-w-xs flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-lg"
+            className="absolute left-0 top-full z-50 mt-2 flex w-72 flex-col gap-2 rounded-xl border border-gray-200 bg-white p-4 shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
+
             <div className="flex items-center justify-between text-sm">
               <button
                 type="button"
@@ -95,7 +95,7 @@ export function DatePickerField({
               })}
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

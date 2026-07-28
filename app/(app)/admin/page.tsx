@@ -5,6 +5,7 @@ import { getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { DatePickerField } from "@/components/ui/DatePickerField";
+import { RosterSummary } from "@/components/admin/RosterSummary";
 import {
   AssignmentBoard,
   ReadOnlyAssignmentList,
@@ -13,12 +14,6 @@ import {
 } from "@/components/admin/AssignmentBoard";
 
 type AvailabilityStatus = "available" | "vacation" | "dayoff";
-
-const STATUS_LABELS: Record<AvailabilityStatus, string> = {
-  available: "가용",
-  vacation: "휴가",
-  dayoff: "휴무",
-};
 
 function getTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -51,7 +46,7 @@ export default async function AdminDashboardPage({
     await Promise.all([
       supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
       supabase.from("availabilities").select("member_id, status").eq("start_date", date),
-      supabase.from("skill_tags").select("id, name").eq("team_id", teamId),
+      supabase.from("skill_tags").select("id, name"), // 모든 팀이 공유하는 전역 스킬 카탈로그
       supabase.from("member_skills").select("member_id, skill_tag_id"),
       supabase
         .from("tasks")
@@ -65,7 +60,7 @@ export default async function AdminDashboardPage({
   // 미완료 강조: 과거 날짜에 배정됐지만 아직 완료 체크되지 않은 건 (PRD 3.8)
   const pastTasksRes = await supabase
     .from("tasks")
-    .select("id, title, date, start_time, end_time")
+    .select("id, title, date")
     .eq("team_id", teamId)
     .lt("date", today);
 
@@ -91,8 +86,6 @@ export default async function AdminDashboardPage({
         assignmentId: a.id,
         taskTitle: task.title,
         date: task.date,
-        startTime: task.start_time,
-        endTime: task.end_time,
         memberName: memberNameById.get(a.member_id) ?? "?",
       };
     })
@@ -113,8 +106,6 @@ export default async function AdminDashboardPage({
     name: m.name,
     status: statusByMember.get(m.id) ?? ("available" as AvailabilityStatus),
   }));
-
-  const availableCount = roster.filter((m) => m.status === "available").length;
 
   const skillsByMember = new Map<string, string[]>();
   for (const ms of memberSkillsRes.data ?? []) {
@@ -219,34 +210,7 @@ export default async function AdminDashboardPage({
 
       <DatePickerField selectedDate={date} today={today} basePath="/admin" />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <SummaryCard label="전체 인원" value={`${roster.length}명`} />
-        <SummaryCard label="가용 인원" value={`${availableCount}명`} />
-      </div>
-
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b text-left">
-            <th className="py-2">이름</th>
-            <th className="py-2">상태</th>
-          </tr>
-        </thead>
-        <tbody>
-          {roster.map((m) => (
-            <tr key={m.id} className="border-b">
-              <td className="py-2">{m.name}</td>
-              <td className="py-2">{STATUS_LABELS[m.status]}</td>
-            </tr>
-          ))}
-          {roster.length === 0 && (
-            <tr>
-              <td colSpan={2} className="py-4 text-center text-gray-500">
-                해당 조건의 인원이 없습니다.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <RosterSummary roster={roster} />
 
       <section className="flex flex-col gap-2">
         <h2 className="font-medium">미완료 과업</h2>
@@ -255,7 +219,7 @@ export default async function AdminDashboardPage({
         ) : (
           incompleteList.map((it) => (
             <p key={it.assignmentId} className="rounded bg-orange-50 p-2 text-sm text-orange-800">
-              {it.date} {it.startTime.slice(0, 5)}~{it.endTime.slice(0, 5)} &apos;{it.taskTitle}&apos; — {it.memberName}
+              {it.date} &apos;{it.taskTitle}&apos; — {it.memberName}
             </p>
           ))
         )}
@@ -280,14 +244,5 @@ export default async function AdminDashboardPage({
         )}
       </section>
     </main>
-  );
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border p-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-lg font-semibold">{value}</p>
-    </div>
   );
 }
