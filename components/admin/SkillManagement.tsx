@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { createSkillTag, grantSkill, revokeSkill, deleteSkillTag } from "@/app/(app)/admin/organization/actions";
 
 type Member = { id: string; name: string; skillIds: string[] };
 type SkillTag = { id: string; name: string };
 
-const LONG_PRESS_MS = 600;
+const REMOVE_ZONE_ID = "__remove_skill_zone__";
 
 // [관리자/PC 전용] 스킬 태그 생성 + Drag & Drop으로 조직원별 부여/회수 (PRD 3.1)
 // 스킬 태그는 모든 중대가 공유하는 전역 카탈로그다 — 어느 중대 관리자든 추가/삭제할 수 있다.
@@ -26,9 +26,16 @@ export function SkillManagement({
 
   function handleDragEnd(event: DragEndEvent) {
     const skillTagId = event.active.id as string;
-    const memberId = event.over?.id as string | undefined;
-    if (!memberId) return;
+    const overId = event.over?.id as string | undefined;
+    if (!overId) return;
 
+    if (overId === REMOVE_ZONE_ID) {
+      const tag = skillTags.find((t) => t.id === skillTagId);
+      if (tag) handleDeleteTag(tag);
+      return;
+    }
+
+    const memberId = overId;
     const member = members.find((m) => m.id === memberId);
     if (!member) return;
 
@@ -64,13 +71,16 @@ export function SkillManagement({
       <div className="flex flex-col gap-4 rounded border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">스킬 태그 관리</h2>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="rounded bg-black px-3 py-1 text-sm text-white"
-          >
-            새 스킬 추가
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="rounded bg-black px-3 py-1 text-sm text-white"
+            >
+              새 스킬 추가
+            </button>
+            <RemoveSkillDropZone />
+          </div>
         </div>
 
         {(error || dragError) && (
@@ -79,11 +89,11 @@ export function SkillManagement({
 
         <div className="flex flex-col gap-2">
           <p className="text-xs text-gray-500">
-            아래 스킬 태그를 조직원 위로 끌어다 놓으면 부여됩니다. 더블클릭하거나 길게 누르면 삭제됩니다.
+            아래 스킬 태그를 조직원 위로 끌어다 놓으면 부여되고, &quot;제거&quot; 위로 끌어다 놓으면 삭제됩니다.
           </p>
           <div className="flex flex-wrap gap-2">
             {skillTags.map((tag) => (
-              <SkillChipDraggable key={tag.id} tag={tag} onDelete={() => handleDeleteTag(tag)} />
+              <SkillChipDraggable key={tag.id} tag={tag} />
             ))}
             {skillTags.length === 0 && (
               <span className="text-xs text-gray-400">등록된 스킬 태그가 없습니다.</span>
@@ -136,20 +146,9 @@ export function SkillManagement({
   );
 }
 
-function SkillChipDraggable({ tag, onDelete }: { tag: SkillTag; onDelete: () => void }) {
+function SkillChipDraggable({ tag }: { tag: SkillTag }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: tag.id });
   const style = transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined;
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function startLongPress() {
-    pressTimer.current = setTimeout(onDelete, LONG_PRESS_MS);
-  }
-  function cancelLongPress() {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
-    }
-  }
 
   return (
     <div
@@ -157,19 +156,27 @@ function SkillChipDraggable({ tag, onDelete }: { tag: SkillTag; onDelete: () => 
       style={style}
       {...attributes}
       {...listeners}
-      onPointerDown={(e) => {
-        listeners?.onPointerDown?.(e);
-        startLongPress();
-      }}
-      onPointerUp={cancelLongPress}
-      onPointerLeave={cancelLongPress}
-      onDoubleClick={onDelete}
-      title="드래그해서 부여, 더블클릭/길게 눌러서 삭제"
+      title="드래그해서 조직원에게 부여, '제거'로 드래그하면 삭제"
       className={`cursor-grab select-none rounded-full border bg-white px-3 py-1 text-sm shadow-sm ${
         isDragging ? "z-10 opacity-50" : ""
       }`}
     >
       {tag.name}
+    </div>
+  );
+}
+
+function RemoveSkillDropZone() {
+  const { setNodeRef, isOver } = useDroppable({ id: REMOVE_ZONE_ID });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded border border-dashed px-3 py-1 text-sm ${
+        isOver ? "border-red-500 bg-red-50 text-red-700" : "border-gray-300 text-gray-500"
+      }`}
+    >
+      🗑 제거
     </div>
   );
 }

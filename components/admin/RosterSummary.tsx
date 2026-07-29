@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<AvailabilityStatus, string> = {
 export function RosterSummary({
   roster,
 }: {
-  roster: { id: string; name: string; status: AvailabilityStatus }[];
+  roster: { id: string; name: string; rank: string; status: AvailabilityStatus }[];
 }) {
   const [open, setOpen] = useState(false);
   const availableCount = roster.filter((m) => m.status === "available").length;
@@ -30,6 +30,7 @@ export function RosterSummary({
           <thead>
             <tr className="border-b text-left">
               <th className="py-2">이름</th>
+              <th className="py-2">계급</th>
               <th className="py-2">상태</th>
             </tr>
           </thead>
@@ -37,12 +38,13 @@ export function RosterSummary({
             {roster.map((m) => (
               <tr key={m.id} className="border-b">
                 <td className="py-2">{m.name}</td>
+                <td className="py-2">{m.rank}</td>
                 <td className="py-2">{STATUS_LABELS[m.status]}</td>
               </tr>
             ))}
             {roster.length === 0 && (
               <tr>
-                <td colSpan={2} className="py-4 text-center text-gray-500">
+                <td colSpan={3} className="py-4 text-center text-gray-500">
                   해당 조건의 인원이 없습니다.
                 </td>
               </tr>

@@ -15,6 +15,8 @@ import {
 
 type AvailabilityStatus = "available" | "vacation" | "dayoff";
 
+const DEFAULT_MEMBER_RANK = "이병";
+
 function getTodayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -42,7 +44,7 @@ export default async function AdminDashboardPage({
 
   const [membersRes, availabilityRes, skillTagsRes, memberSkillsRes, tasksRes, requiredSkillsRes] =
     await Promise.all([
-      supabase.from("members").select("id, name").eq("team_id", teamId).order("name"),
+      supabase.from("members").select("id, name, rank:member_rank").eq("team_id", teamId).order("name"),
       supabase.from("availabilities").select("member_id, status").eq("start_date", date),
       supabase.from("skill_tags").select("id, name"), // 모든 팀이 공유하는 전역 스킬 카탈로그
       supabase.from("member_skills").select("member_id, skill_tag_id"),
@@ -102,6 +104,7 @@ export default async function AdminDashboardPage({
   const roster = members.map((m) => ({
     id: m.id,
     name: m.name,
+    rank: m.rank ?? DEFAULT_MEMBER_RANK,
     status: statusByMember.get(m.id) ?? ("available" as AvailabilityStatus),
   }));
 
