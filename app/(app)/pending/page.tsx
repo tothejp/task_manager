@@ -1,13 +1,9 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentMember } from "@/lib/get-current-member";
+import { getAuthUser, getCurrentMember } from "@/lib/get-current-member";
 
 // 초대코드로 합류한 팀원이 관리자 승인을 기다리는 화면 (이메일 인증 대체)
 export default async function PendingPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const member = await getCurrentMember();

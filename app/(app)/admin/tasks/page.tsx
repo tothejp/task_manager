@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentMember } from "@/lib/get-current-member";
+import { getAuthUser, getCurrentMember } from "@/lib/get-current-member";
 import { isMobileUserAgent } from "@/lib/device";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { DatePickerField } from "@/components/ui/DatePickerField";
@@ -20,9 +20,7 @@ export default async function AdminTasksPage({
   searchParams: { from?: string; error?: string };
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const member = await getCurrentMember();

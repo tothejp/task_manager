@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentMember } from "@/lib/get-current-member";
+import { getAuthUser, getCurrentMember } from "@/lib/get-current-member";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 
 // 과업은 시간 단위가 아닌 날짜 단위로만 관리한다 (관리자 요청). DB 컬럼은 not null이라
@@ -13,9 +13,7 @@ const FULL_DAY_END = "23:59";
 
 async function requireAdmin() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   const member = await getCurrentMember();
 
   if (!user || !member || member.role !== "admin") {

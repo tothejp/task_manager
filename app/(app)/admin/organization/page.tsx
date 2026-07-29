@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentMember } from "@/lib/get-current-member";
+import { getAuthUser, getCurrentMember } from "@/lib/get-current-member";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { SkillManagement } from "@/components/admin/SkillManagement";
 import { MemberRankSelect } from "@/components/admin/MemberRankSelect";
@@ -15,9 +15,7 @@ export default async function OrganizationPage({
   searchParams: { error?: string };
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const member = await getCurrentMember();

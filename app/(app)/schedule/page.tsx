@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentMember } from "@/lib/get-current-member";
+import { getAuthUser, getCurrentMember } from "@/lib/get-current-member";
 import { getCurrentMonth, getAdjacentMonth } from "@/lib/date";
 import { ScheduleCalendar, type AvailabilityRow } from "@/components/schedule/ScheduleCalendar";
 
@@ -12,9 +12,7 @@ export default async function SchedulePage({
   searchParams: { month?: string };
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) redirect("/login");
 

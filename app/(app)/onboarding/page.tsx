@@ -1,10 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getAuthUser } from '@/lib/get-current-member'
 import { OnboardingForm } from '@/components/OnboardingForm'
 
 export default async function OnboardingPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthUser()
   if (!user) redirect('/login')
 
   // 이미 팀이 있으면 대시보드로

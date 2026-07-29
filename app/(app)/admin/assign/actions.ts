@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentMember } from "@/lib/get-current-member";
+import { getAuthUser, getCurrentMember } from "@/lib/get-current-member";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { isTimeOverlapping } from "@/lib/time-overlap";
 import {
@@ -16,9 +16,7 @@ type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
 async function requireAdmin() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   const member = await getCurrentMember();
 
   if (!user || !member || member.role !== "admin") {

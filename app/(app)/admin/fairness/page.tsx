@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentMember } from "@/lib/get-current-member";
+import { getAuthUser, getCurrentMember } from "@/lib/get-current-member";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 
 // PRD 3.9: 평균 대비 ±20% 이상 편차 시 경고
@@ -9,9 +9,7 @@ const FAIRNESS_DEVIATION_THRESHOLD = 0.2;
 // [관리자/PC] 구성원별 누적 배정 공정성 지표 (PRD 3.9)
 export default async function FairnessPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/login");
 
   const member = await getCurrentMember();
