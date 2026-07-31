@@ -7,6 +7,7 @@ import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { DatePickerField } from "@/components/ui/DatePickerField";
 import { TaskEditButton, TaskCreateButton } from "@/components/admin/TaskEditButton";
 import { InlineTaskTitle, InlineTaskDescription, TaskHeadcountSelect } from "@/components/admin/TaskInlineFields";
+import { formatHeadcount } from "@/lib/task-headcount";
 import { deleteTask } from "./actions";
 
 function getTodayDateString(): string {
@@ -41,7 +42,7 @@ export default async function AdminTasksPage({
       .eq("team_id", teamId)
       .gte("date", from)
       .order("date"),
-    supabase.from("skill_tags").select("id, name").order("name"), // 모든 팀이 공유하는 전역 스킬 카탈로그
+    supabase.from("skill_tags").select("id, name").order("name"), // 모든 팀이 공유하는 전역 능력 카탈로그
     supabase.from("task_skills").select("task_id, skill_tag_id"),
   ]);
 
@@ -71,7 +72,7 @@ export default async function AdminTasksPage({
             <th className="py-2">날짜</th>
             <th className="py-2">과업명</th>
             <th className="py-2">요구인원</th>
-            <th className="py-2">필수 스킬</th>
+            <th className="py-2">필수 능력</th>
             {!isMobile && <th className="py-2" />}
           </tr>
         </thead>
@@ -94,7 +95,7 @@ export default async function AdminTasksPage({
               </td>
               <td className="py-2">
                 {isMobile ? (
-                  `${t.required_headcount}명`
+                  formatHeadcount(t.required_headcount)
                 ) : (
                   <TaskHeadcountSelect taskId={t.id} requiredHeadcount={t.required_headcount} />
                 )}

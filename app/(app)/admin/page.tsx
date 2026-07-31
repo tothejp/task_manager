@@ -46,7 +46,7 @@ export default async function AdminDashboardPage({
     await Promise.all([
       supabase.from("members").select("id, name, rank:member_rank").eq("team_id", teamId).order("name"),
       supabase.from("availabilities").select("member_id, status").eq("start_date", date),
-      supabase.from("skill_tags").select("id, name"), // 모든 팀이 공유하는 전역 스킬 카탈로그
+      supabase.from("skill_tags").select("id, name"), // 모든 팀이 공유하는 전역 능력 카탈로그
       supabase.from("member_skills").select("member_id, skill_tag_id"),
       supabase
         .from("tasks")
@@ -57,40 +57,7 @@ export default async function AdminDashboardPage({
       supabase.from("task_skills").select("task_id, skill_tag_id"),
     ]);
 
-  // 미완료 강조: 과거 날짜에 배정됐지만 아직 완료 체크되지 않은 건 (PRD 3.8)
-  const pastTasksRes = await supabase
-    .from("tasks")
-    .select("id, title, date")
-    .eq("team_id", teamId)
-    .lt("date", today);
-
-  const pastTaskIds = (pastTasksRes.data ?? []).map((t) => t.id);
-  const pastTasksById = new Map((pastTasksRes.data ?? []).map((t) => [t.id, t]));
-
-  const incompleteRes =
-    pastTaskIds.length > 0
-      ? await supabase
-          .from("assignments")
-          .select("id, member_id, task_id")
-          .in("task_id", pastTaskIds)
-          .eq("status", "assigned")
-      : { data: [] as { id: string; member_id: string; task_id: string }[] };
-
   const memberNameById = new Map((membersRes.data ?? []).map((m) => [m.id, m.name]));
-
-  const incompleteList = (incompleteRes.data ?? [])
-    .map((a) => {
-      const task = pastTasksById.get(a.task_id);
-      if (!task) return null;
-      return {
-        assignmentId: a.id,
-        taskTitle: task.title,
-        date: task.date,
-        memberName: memberNameById.get(a.member_id) ?? "?",
-      };
-    })
-    .filter((x): x is NonNullable<typeof x> => x !== null)
-    .sort((a, b) => a.date.localeCompare(b.date));
 
   const members = membersRes.data ?? [];
   const skillTags = skillTagsRes.data ?? [];
@@ -212,19 +179,6 @@ export default async function AdminDashboardPage({
       <DatePickerField selectedDate={date} today={today} basePath="/admin" />
 
       <RosterSummary roster={roster} />
-
-      <section className="flex flex-col gap-2">
-        <h2 className="font-medium">미완료 과업</h2>
-        {incompleteList.length === 0 ? (
-          <p className="text-sm text-gray-500">미완료 과업이 없습니다.</p>
-        ) : (
-          incompleteList.map((it) => (
-            <p key={it.assignmentId} className="rounded bg-orange-50 p-2 text-sm text-orange-800">
-              {it.date} &apos;{it.taskTitle}&apos; — {it.memberName}
-            </p>
-          ))
-        )}
-      </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="font-medium">과업 배정</h2>

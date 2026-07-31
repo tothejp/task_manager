@@ -8,7 +8,7 @@ import { approveMember, rejectMember } from "./actions";
 
 type PendingMember = { id: string; name: string; email: string; created_at: string };
 
-// [관리자/PC] 조직원 관리 — 가입 승인 대기 목록 + 스킬 태그 관리
+// [관리자/PC] 조직원 관리 — 가입 승인 대기 목록 + 능력 태그 관리
 export default async function OrganizationPage({
   searchParams,
 }: {
@@ -29,7 +29,7 @@ export default async function OrganizationPage({
     supabase.from("teams").select("name").eq("id", teamId).single(),
     supabase.rpc("list_pending_members_for_team", { p_team_id: teamId }),
     supabase.from("members").select("id, name, rank:member_rank").eq("team_id", teamId).eq("status", "active").order("name"),
-    supabase.from("skill_tags").select("id, name").order("name"), // 모든 팀이 공유하는 전역 스킬 카탈로그
+    supabase.from("skill_tags").select("id, name").order("name"), // 모든 팀이 공유하는 전역 능력 카탈로그
     supabase.from("member_skills").select("member_id, skill_tag_id"),
   ]);
 

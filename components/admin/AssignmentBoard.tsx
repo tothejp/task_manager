@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from "@dnd-kit/core";
 import { isTimeOverlapping } from "@/lib/time-overlap";
+import { isUnlimitedHeadcount, formatHeadcount } from "@/lib/task-headcount";
 import type { AutoAssignResult } from "@/lib/auto-assign";
 import {
   assignMember,
@@ -83,7 +84,7 @@ export function AssignmentBoard({
       return;
     }
 
-    if (task.assignedMembers.length >= task.requiredHeadcount) {
+    if (!isUnlimitedHeadcount(task.requiredHeadcount) && task.assignedMembers.length >= task.requiredHeadcount) {
       setError(`'${task.title}'의 요구 인원이 모두 채워졌습니다.`);
       return;
     }
@@ -99,7 +100,7 @@ export function AssignmentBoard({
       return;
     }
 
-    // 필수 스킬 미보유는 하드 차단이 아니라 경고 모달 (PRD 3.5, CLAUDE.md 2.4)
+    // 필수 능력 미보유는 하드 차단이 아니라 경고 모달 (PRD 3.5, CLAUDE.md 2.4)
     const missingSkillIds = task.requiredSkillIds.filter((id) => !member.skillIds.includes(id));
     if (missingSkillIds.length > 0) {
       setPendingConfirm({
@@ -306,9 +307,10 @@ function TaskDroppable({
   gapNames: string[];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: task.id });
+  const unlimited = isUnlimitedHeadcount(task.requiredHeadcount);
   const effectiveAssignedCount = task.assignedMembers.length + pendingForTask.length;
-  const emptySlots = Math.max(task.requiredHeadcount - effectiveAssignedCount, 0);
-  const isFull = emptySlots === 0;
+  const emptySlots = unlimited ? 0 : Math.max(task.requiredHeadcount - effectiveAssignedCount, 0);
+  const isFull = !unlimited && emptySlots === 0;
 
   return (
     <div
@@ -324,15 +326,17 @@ function TaskDroppable({
         <div>
           <p className="font-medium">{task.title}</p>
           <p className="text-xs text-gray-500">
-            요구 {task.requiredHeadcount}명
+            요구 {formatHeadcount(task.requiredHeadcount)}
             {task.requiredSkillIds.length > 0 && (
-              <> · 필수 스킬: {task.requiredSkillIds.map((id) => skillNameById[id] ?? id).join(", ")}</>
+              <> · 필수 능력: {task.requiredSkillIds.map((id) => skillNameById[id] ?? id).join(", ")}</>
             )}
           </p>
         </div>
-        <span className={`text-xs ${isFull ? "text-green-700" : "text-orange-600"}`}>
-          {isFull ? "충원 완료" : `미충원 ${emptySlots}`}
-        </span>
+        {!unlimited && (
+          <span className={`text-xs ${isFull ? "text-green-700" : "text-orange-600"}`}>
+            {isFull ? "배정 완료" : `미배정 ${emptySlots}`}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -383,20 +387,21 @@ export function ReadOnlyAssignmentList({
     <div className="flex flex-col gap-3">
       <p className="text-sm text-gray-500">배정 변경은 PC에서만 가능합니다 (조회 전용).</p>
       {tasks.map((t) => {
-        const emptySlots = Math.max(t.requiredHeadcount - t.assignedMembers.length, 0);
+        const unlimited = isUnlimitedHeadcount(t.requiredHeadcount);
+        const emptySlots = unlimited ? 0 : Math.max(t.requiredHeadcount - t.assignedMembers.length, 0);
         const gapNames = gapNoticesByTask[t.id] ?? [];
         return (
           <div key={t.id} className="rounded border p-3 text-sm">
             <p className="font-medium">{t.title}</p>
             <p className="text-xs text-gray-500">
-              요구 {t.requiredHeadcount}명
+              요구 {formatHeadcount(t.requiredHeadcount)}
               {t.requiredSkillIds.length > 0 && (
-                <> · 필수 스킬: {t.requiredSkillIds.map((id) => skillNameById[id] ?? id).join(", ")}</>
+                <> · 필수 능력: {t.requiredSkillIds.map((id) => skillNameById[id] ?? id).join(", ")}</>
               )}
             </p>
             <p className="mt-1">
               배정: {t.assignedMembers.map((a) => a.name).join(", ") || "없음"}
-              {emptySlots > 0 && <span className="text-orange-600"> (미충원 {emptySlots})</span>}
+              {emptySlots > 0 && <span className="text-orange-600"> (미배정 {emptySlots})</span>}
             </p>
             {gapNames.length > 0 && (
               <p className="mt-1 text-xs text-red-600">
@@ -426,7 +431,7 @@ function SkillWarningModal({
     <div className="fixed inset-0 flex items-center justify-center bg-black/40">
       <div className="w-80 rounded bg-white p-4">
         <p className="mb-4 text-sm">
-          {confirm.memberName}님은 &apos;{confirm.missingSkillNames.join(", ")}&apos; 스킬이 없습니다.
+          {confirm.memberName}님은 &apos;{confirm.missingSkillNames.join(", ")}&apos; 능력이 없습니다.
           그래도 배정하시겠습니까?
         </p>
         <div className="flex justify-end gap-2">

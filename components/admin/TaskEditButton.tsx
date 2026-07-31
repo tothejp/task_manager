@@ -84,7 +84,7 @@ function TaskFormModal({
             </div>
 
             <fieldset className="flex flex-col gap-1 text-sm">
-              <legend className="mb-1 font-medium">필수 스킬(선택, 복수 가능)</legend>
+              <legend className="mb-1 font-medium">필수 능력(선택, 복수 가능)</legend>
               <div className="flex flex-wrap gap-3">
                 {skillTags.map((tag) => (
                   <label key={tag.id} className="flex items-center gap-1">
@@ -98,7 +98,7 @@ function TaskFormModal({
                   </label>
                 ))}
                 {skillTags.length === 0 && (
-                  <span className="text-xs text-gray-400">등록된 스킬 태그가 없습니다.</span>
+                  <span className="text-xs text-gray-400">등록된 능력 태그가 없습니다.</span>
                 )}
               </div>
             </fieldset>

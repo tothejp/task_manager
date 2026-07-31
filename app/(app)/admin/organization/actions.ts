@@ -47,7 +47,7 @@ export async function rejectMember(memberId: string) {
   revalidatePath("/admin/organization");
 }
 
-// 팀별 스킬 태그 생성 (PRD 3.1: 스킬 태그는 관리자만 부여/회수 가능)
+// 팀별 능력 태그 생성 (PRD 3.1: 능력 태그는 관리자만 부여/회수 가능)
 export async function createSkillTag(formData: FormData) {
   const { supabase, member } = await requireAdmin();
   const skillName = formData.get("skillName") as string;
@@ -58,7 +58,7 @@ export async function createSkillTag(formData: FormData) {
 
   if (error) {
     const message =
-      error.code === "23505" ? `이미 등록된 스킬 태그입니다: ${skillName}` : error.message;
+      error.code === "23505" ? `이미 등록된 능력 태그입니다: ${skillName}` : error.message;
     redirect(`/admin/organization?error=${encodeURIComponent(message)}`);
   }
 
@@ -67,9 +67,9 @@ export async function createSkillTag(formData: FormData) {
 
 export type SkillActionResult = { ok: true } | { ok: false; error: string };
 
-// 스킬 태그는 이제 전 팀 공유 자원이므로 팀 구분 없이 삭제 가능(관리자 전용).
-// 다른 팀이 이미 부여/요구 스킬로 쓰고 있어도 함께 정리된다(DB에 cascade 설정됨) — 그래서
-// 클라이언트에서 더블클릭/롱프레스 시 확인창을 한 번 더 거치게 해둔다.
+// 능력 태그는 이제 전 팀 공유 자원이므로 팀 구분 없이 삭제 가능(관리자 전용).
+// 다른 팀이 이미 부여/요구 능력으로 쓰고 있어도 함께 정리된다(DB에 cascade 설정됨) — 그래서
+// 클라이언트에서 "제거" 드롭존으로 드래그 시 확인창을 한 번 더 거치게 해둔다.
 export async function deleteSkillTag(skillTagId: string): Promise<SkillActionResult> {
   const { supabase } = await requireAdmin();
 
@@ -83,7 +83,7 @@ export async function deleteSkillTag(skillTagId: string): Promise<SkillActionRes
   return { ok: true };
 }
 
-// Drag & Drop으로 스킬 태그를 조직원에게 끌어다 놓으면 호출된다 (클라이언트에서 직접 호출)
+// Drag & Drop으로 능력 태그를 조직원에게 끌어다 놓으면 호출된다 (클라이언트에서 직접 호출)
 export async function grantSkill(memberId: string, skillTagId: string): Promise<SkillActionResult> {
   const { supabase } = await requireAdmin();
 
@@ -92,7 +92,7 @@ export async function grantSkill(memberId: string, skillTagId: string): Promise<
     .insert({ member_id: memberId, skill_tag_id: skillTagId });
 
   if (error) {
-    return { ok: false, error: error.code === "23505" ? "이미 보유한 스킬입니다." : error.message };
+    return { ok: false, error: error.code === "23505" ? "이미 보유한 능력입니다." : error.message };
   }
 
   revalidatePath("/admin/organization");

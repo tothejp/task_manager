@@ -93,7 +93,7 @@ export function recommendAssignments(
         taskTitle: task.title,
         requiredHeadcount: task.requiredHeadcount,
         filledTotal,
-        reason: task.requiredSkillIds.length > 0 ? "해당 스킬 보유 가용 인원 부족" : "가용 인원 부족",
+        reason: task.requiredSkillIds.length > 0 ? "해당 능력 보유 가용 인원 부족" : "가용 인원 부족",
       });
     }
   }

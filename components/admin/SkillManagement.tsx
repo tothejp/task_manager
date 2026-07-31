@@ -9,8 +9,8 @@ type SkillTag = { id: string; name: string };
 
 const REMOVE_ZONE_ID = "__remove_skill_zone__";
 
-// [관리자/PC 전용] 스킬 태그 생성 + Drag & Drop으로 조직원별 부여/회수 (PRD 3.1)
-// 스킬 태그는 모든 중대가 공유하는 전역 카탈로그다 — 어느 중대 관리자든 추가/삭제할 수 있다.
+// [관리자/PC 전용] 능력 태그 생성 + Drag & Drop으로 조직원별 부여/회수 (PRD 3.1)
+// 능력 태그는 모든 중대가 공유하는 전역 카탈로그다 — 어느 중대 관리자든 추가/삭제할 수 있다.
 export function SkillManagement({
   members,
   skillTags,
@@ -40,7 +40,7 @@ export function SkillManagement({
     if (!member) return;
 
     if (member.skillIds.includes(skillTagId)) {
-      setDragError(`${member.name}님은 이미 '${skillNameById.get(skillTagId) ?? ""}' 스킬을 보유하고 있습니다.`);
+      setDragError(`${member.name}님은 이미 '${skillNameById.get(skillTagId) ?? ""}' 능력을 보유하고 있습니다.`);
       return;
     }
 
@@ -57,7 +57,7 @@ export function SkillManagement({
   }
 
   function handleDeleteTag(tag: SkillTag) {
-    if (!window.confirm(`'${tag.name}' 스킬을 삭제할까요? 모든 중대의 조직원/과업에서 함께 제거됩니다.`)) {
+    if (!window.confirm(`'${tag.name}' 능력을 삭제할까요? 모든 중대의 조직원/과업에서 함께 제거됩니다.`)) {
       return;
     }
     setDragError(null);
@@ -70,14 +70,14 @@ export function SkillManagement({
     <DndContext onDragEnd={handleDragEnd}>
       <div className="flex flex-col gap-4 rounded border p-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium">스킬 태그 관리</h2>
+          <h2 className="font-medium">능력 태그 관리</h2>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
               className="rounded bg-black px-3 py-1 text-sm text-white"
             >
-              새 스킬 추가
+              새 능력 추가
             </button>
             <RemoveSkillDropZone />
           </div>
@@ -89,14 +89,14 @@ export function SkillManagement({
 
         <div className="flex flex-col gap-2">
           <p className="text-xs text-gray-500">
-            아래 스킬 태그를 조직원 위로 끌어다 놓으면 부여되고, &quot;제거&quot; 위로 끌어다 놓으면 삭제됩니다.
+            아래 능력 태그를 조직원 위로 끌어다 놓으면 부여되고, &quot;제거&quot; 위로 끌어다 놓으면 삭제됩니다.
           </p>
           <div className="flex flex-wrap gap-2">
             {skillTags.map((tag) => (
               <SkillChipDraggable key={tag.id} tag={tag} />
             ))}
             {skillTags.length === 0 && (
-              <span className="text-xs text-gray-400">등록된 스킬 태그가 없습니다.</span>
+              <span className="text-xs text-gray-400">등록된 능력 태그가 없습니다.</span>
             )}
           </div>
         </div>
@@ -122,11 +122,11 @@ export function SkillManagement({
             onClick={(e) => e.stopPropagation()}
             className="flex w-full max-w-xs flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-lg"
           >
-            <h2 className="font-medium">새 스킬 추가</h2>
+            <h2 className="font-medium">새 능력 추가</h2>
             <input
               type="text"
               name="skillName"
-              placeholder="새 스킬 태그 (예: 지게차운전)"
+              placeholder="새 능력 태그 (예: 지게차운전)"
               required
               autoFocus
               className="rounded border px-2 py-1 text-sm"
@@ -211,7 +211,7 @@ function MemberDropRow({
           </button>
         ))}
         {member.skillIds.length === 0 && (
-          <span className="text-xs text-gray-400">보유 스킬 없음</span>
+          <span className="text-xs text-gray-400">보유 능력 없음</span>
         )}
       </div>
     </div>

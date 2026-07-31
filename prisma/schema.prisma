@@ -94,7 +94,8 @@ model Member {
   @@map("members")
 }
 
-// 팀별 스킬 태그 카탈로그. 관리자만 생성/삭제 가능 (RLS로 강제)
+// 전역 공유 능력(스킬) 태그 카탈로그. 이름은 팀 구분 없이 전역으로 유일하다.
+// team_id는 생성한 팀 기록용으로만 남아있고, 조회/쓰기는 팀 무관(관리자만 쓰기 가능, RLS로 강제)
 model SkillTag {
   id        String   @id @default(uuid()) @db.Uuid
   teamId    String   @map("team_id") @db.Uuid
@@ -105,7 +106,7 @@ model SkillTag {
   memberSkills MemberSkill[]
   taskSkills   TaskSkill[]
 
-  @@unique([teamId, name])
+  @@unique([name])
   @@index([teamId])
   @@map("skill_tags")
 }

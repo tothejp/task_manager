@@ -6,8 +6,9 @@ import {
   updateTaskDescription,
   updateTaskHeadcount,
 } from "@/app/(app)/admin/tasks/actions";
+import { UNLIMITED_HEADCOUNT, formatHeadcount } from "@/lib/task-headcount";
 
-const HEADCOUNT_OPTIONS = Array.from({ length: 20 }, (_, i) => i + 1);
+const HEADCOUNT_OPTIONS = [UNLIMITED_HEADCOUNT, ...Array.from({ length: 20 }, (_, i) => i + 1)];
 
 // 표 안에서 과업명을 클릭하면 바로 입력창으로 바뀌어 빠르게 고칠 수 있다
 // (전체 수정은 별도 "수정" 모달에서도 가능 — 둘은 서로 다른 진입 경로일 뿐 데이터는 같다)
@@ -143,7 +144,7 @@ export function TaskHeadcountSelect({
     >
       {HEADCOUNT_OPTIONS.map((n) => (
         <option key={n} value={n}>
-          {n}명
+          {formatHeadcount(n)}
         </option>
       ))}
     </select>
