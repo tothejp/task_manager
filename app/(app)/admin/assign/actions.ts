@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthUser, getCurrentMember } from "@/lib/get-current-member";
 import { checkIsSuperadmin, resolveEffectiveTeamId } from "@/lib/team-context";
 import { isTimeOverlapping } from "@/lib/time-overlap";
+import { isUnlimitedHeadcount } from "@/lib/task-headcount";
 import {
   recommendAssignments,
   type AutoAssignMember,
@@ -89,7 +90,7 @@ async function insertAssignmentIfValid(
     .eq("task_id", taskId)
     .neq("status", "vacant");
 
-  if ((count ?? 0) >= task.required_headcount) {
+  if (!isUnlimitedHeadcount(task.required_headcount) && (count ?? 0) >= task.required_headcount) {
     return { ok: false, error: "요구 인원이 모두 채워졌습니다." };
   }
 
