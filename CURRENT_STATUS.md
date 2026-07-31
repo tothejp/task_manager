@@ -11,7 +11,8 @@
 - **Vercel 함수 리전을 Supabase와 동일하게 고정**: 리전 미지정 시 Vercel이 `us-east-1`(iad1)에서 함수를 실행했는데 Supabase 프로젝트는 `ap-southeast-2`(시드니)라 서버-DB 왕복마다 지연이 컸음. `vercel.json`에 `"regions": ["syd1"]` 추가해 시드니로 고정(배포 후 `X-Vercel-Id` 헤더로 `syd1` 실행 확인 완료). 실사용자가 한국에 있어 사용자→함수 구간은 서울(icn1)이 더 짧지만, 액션 하나당 서버↔DB 왕복이 4~5회 반복되는 구조라 DB와 리전을 맞추는 쪽이 전체적으로 이득이 크다고 판단.
   - **측정 방법 관련 교훈(중요)**: 처음엔 자동화 브라우저에서 `setInterval`로 `document.body.innerText`를 폴링해 지연시간을 쟀는데 5~11초로 나왔음. 그런데 이 값은 **측정 오류였음** — 테스트 탭이 `document.hidden = true`(백그라운드) 상태라 크롬이 타이머를 강하게 스로틀링해서 실제보다 훨씬 느리게 보인 것. 브라우저의 Resource/Navigation Timing API(타이머 스로틀링 영향을 안 받는 실측값)로 다시 재보니 실제 왕복은 1.1~1.6초 수준이었음. **앞으로 자동화 브라우저에서 지연시간을 측정할 때는 `performance.getEntriesByType('resource'/'navigation')`를 쓸 것 — `setInterval` 폴링 기반 측정은 백그라운드 탭에서 신뢰할 수 없음.**
 - **조직원 관리 — 스킬 태그 삭제 방식을 D&D로 통일**: 기존엔 스킬 칩을 더블클릭하거나 길게 누르면 삭제됐는데, 이게 "칩을 조직원 위로 드래그해서 부여"하는 D&D 동작과 충돌해서(길게 누르는 순간 드래그가 아니라 삭제로 인식됨) 부여가 잘 안 되는 문제가 있었음. "새 스킬 추가" 버튼 옆에 "🗑 제거" 드롭존을 추가하고, 스킬 칩을 그 위로 드래그하면(기존과 동일한 확인창을 거쳐) 삭제되도록 변경([components/admin/SkillManagement.tsx](components/admin/SkillManagement.tsx)). 더블클릭/롱프레스 삭제는 완전히 제거됨.
-- **중대현황판 — 인원 표에 계급 추가**: "전체/가용 인원" 펼치기 표가 이름만 보여주던 것에 "계급" 열을 추가([components/admin/RosterSummary.tsx](components/admin/RosterSummary.tsx)). 계급이 지정 안 된 조직원은 기본값 '이병'으로 표시([app/(app)/admin/page.tsx](app/(app)/admin/page.tsx)) — DB에는 실제로 값을 채워 넣지 않고 화면 표시용 기본값만 적용한 것이라, 조직원 관리에서 계급을 지정하면 그 값으로 바뀜.
+- **중대현황판 — 인원 표에 계급 추가**: "전체/가용 인원" 펼치기 표가 이름만 보여주던 것에 "계급" 열을 추가([components/admin/RosterSummary.tsx](components/admin/RosterSummary.tsx)). 계급이 지정 안 된 조직원은 기본값 '이병'으로 표시([app/(app)/admin/page.tsx](app/(app)/admin/page.tsx)).
+  - **처음엔 화면 표시용 fallback으로만 구현했다가 DB 반영으로 변경**: 앱 코드에서만 `null`을 '이병'으로 대신 보여주다 보니 조직원 관리 화면의 계급 드롭다운(미지정 시 "계급 선택")과 표시가 어긋나는 문제 발견. `supabase/member_rank_default.sql`(미실행)로 기존 null 인원을 실제로 '이병'으로 채우고, 컬럼에 `DEFAULT '이병' NOT NULL` 설정해 앞으로는 DB 레벨에서 항상 값을 갖도록 함 — 앱 코드의 `?? DEFAULT_MEMBER_RANK` fallback은 스크립트 실행 전까지의 안전장치로 그대로 남겨둠.
 
 ### 이번 세션에서 반영한 것 (2026-07-28, 세 번째 라운드)
 - **로그인 에러 메시지 분리**: 기존엔 "이메일 또는 비밀번호가 올바르지 않습니다" 하나로만 안내했는데, 미등록 이메일/비밀번호 오류를 구분해서 보여주도록 변경([app/(auth)/login/actions.ts](app/(auth)/login/actions.ts)). Supabase는 계정 열거 공격 방지를 위해 이 둘을 기본적으로 구분해주지 않으므로, 이메일 가입 여부를 확인하는 SECURITY DEFINER RPC(`is_email_registered`)를 새로 추가함([supabase/email_lookup_rpc.sql](supabase/email_lookup_rpc.sql), 실행 완료).
@@ -73,6 +74,7 @@
 ---
 
 ## 다음 단계
+0. `supabase/member_rank_default.sql` 실행 필요 — 계급 미지정 인원을 DB에 실제로 '이병'으로 채우고 컬럼 기본값/NOT NULL 설정 (실행 전까지는 앱 코드의 fallback으로 화면에 정상 표시되니 급하지 않음)
 1. 실제 사용자 기기(모바일/평소 브라우저, 화면이 보이는 상태)에서 과업 수정·사이드바 이동·스킬 부여 체감 속도가 실제로 개선됐는지 확인 — 자동화 테스트로는 액션당 1.1~1.6초로 측정됨(정확한 방법으로 재측정한 값), 개선 전 수치는 측정 오류로 신뢰 불가해 정확한 비교는 어려움
 2. 스킬 태그가 팀 구분 없이 전역으로 보이는지, 다른 팀 관리자가 만든 스킬도 D&D 가능한지 실사용 확인 (RLS 스크립트 실행 완료)
 3. 스킬 태그 삭제 — "🗑 제거" 드롭존으로 드래그하는 새 방식이 모바일 터치에서도 자연스러운지 실사용 확인 (배포 환경에서 키보드 D&D로 로직 자체는 검증했으나 실제 터치 드래그 체감은 미확인)
@@ -128,6 +130,7 @@
 8. `supabase/add_member_rank.sql` — 계급 컬럼 추가 (실행 완료)
 9. `supabase/skill_tags_shared.sql` — 스킬 태그 전역 공유 전환 (실행 완료)
 10. `supabase/email_lookup_rpc.sql` — 로그인 에러 메시지 분리용 RPC (실행 완료)
+11. `supabase/member_rank_default.sql` — 계급 미지정 인원을 '이병'으로 채우고 컬럼 기본값/NOT NULL 설정 (미실행)
 
 ---
 
