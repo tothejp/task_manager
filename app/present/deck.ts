@@ -7,6 +7,7 @@ export const deckHtml = `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>임무분담표 TaskShare — 소개 자료</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css">
 <style>
 :root{
   --ink:#0B2A5B;
@@ -27,7 +28,7 @@ export const deckHtml = `<!DOCTYPE html>
   --ok:#1C7A5E;
   --ok-bg:#E3F2EC;
   --radius:14px;
-  --font-kr:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','Segoe UI',sans-serif;
+  --font-kr:'NanumSquare','Apple SD Gothic Neo','Malgun Gothic','Segoe UI',sans-serif;
   --font-mono:ui-monospace,'SF Mono','Cascadia Mono','Consolas','Roboto Mono',monospace;
 }
 @media (prefers-color-scheme: dark){
